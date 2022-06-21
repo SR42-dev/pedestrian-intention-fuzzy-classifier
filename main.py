@@ -1,6 +1,7 @@
 import cv2
-import mediapipe as mp
 import math
+import time
+import mediapipe as mp
 
 class PoseDetector:
     """
@@ -138,6 +139,10 @@ def main():
     detector = PoseDetector()
     imPrev = None
 
+    curTime = time.time() # start time
+    fps = 0
+    lastXCenterDisplacement = 0
+
     while True:
 
         success, img = cap.read()
@@ -145,6 +150,8 @@ def main():
         lmList, bboxInfo = detector.findPosition(img, bboxWithHands=False)
 
         if bboxInfo:
+
+            # finding the center of the target pose
             center = bboxInfo["center"]
             cv2.circle(img, center, 5, (255, 0, 255), cv2.FILLED)
 
@@ -153,12 +160,27 @@ def main():
             for lm in lmList :
                 yLocations.append(lm[2])
             deltaY = max(yLocations) - min(yLocations)
-            occupiedHeight = deltaY / cv2.getWindowImageRect('img')[3]
-            print(occupiedHeight)
 
+            occupiedHeight = deltaY / cv2.getWindowImageRect('img')[3] # target variable 1
+            xCenterDisplacement = (cv2.getWindowImageRect('img')[2] / 2) - center[0] # target variable 2
+            centerApproachSpeed = (xCenterDisplacement - lastXCenterDisplacement) * fps # target variable 3
+
+            lastXCenterDisplacement = xCenterDisplacement # displacement updation
+
+        # FPS calculation
+        fps = 1 / (time.time() - curTime)
+        curTime = time.time()
+        cv2.putText(img, '{0:.2f}'.format(fps), (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
+
+        # data output
+        print('--------------\n' + 'yBigness (%) = {0:.2f}\n'.format(occupiedHeight)
+              + 'Displacement from center (px) = {0:.2f}\n'.format(xCenterDisplacement)
+              + 'Speed of center approach (px/s) = {0:.2f}\n'.format(centerApproachSpeed)
+              + '--------------\n')
 
         cv2.imshow("img", img)
         imPrev = img
+
         if cv2.waitKey(1) == ord('q'):
             break
 
