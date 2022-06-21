@@ -1,0 +1,3 @@
+Figure out formulae to get collision probability from obtained variables
+
+Draw decision making automata & fuzzy logic map for collision prediction
