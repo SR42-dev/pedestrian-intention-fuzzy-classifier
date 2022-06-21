@@ -3,6 +3,7 @@ import math
 import time
 import mediapipe as mp
 
+
 class PoseDetector:
     """
     Estimates Pose points of a human body using the mediapipe library.
@@ -133,15 +134,17 @@ class PoseDetector:
 
 
 def main():
-
     # capture frames from a camera
-    cap = cv2.VideoCapture('resources/testVideos/test0.mp4')
+    cap = cv2.VideoCapture('resources/testVideos/test1.mp4')
     detector = PoseDetector()
-    imPrev = None
 
-    curTime = time.time() # start time
+    curTime = time.time()  # start time
     fps = 0
+
     lastXCenterDisplacement = 0
+    occupiedHeight = 0
+    xCenterDisplacement = 0
+    centerApproachSpeed = 0
 
     while True:
 
@@ -157,15 +160,15 @@ def main():
 
             # finding the difference between highest landmark and lowest landmark in pixels
             yLocations = []
-            for lm in lmList :
+            for lm in lmList:
                 yLocations.append(lm[2])
             deltaY = max(yLocations) - min(yLocations)
 
-            occupiedHeight = deltaY / cv2.getWindowImageRect('img')[3] # target variable 1
-            xCenterDisplacement = (cv2.getWindowImageRect('img')[2] / 2) - center[0] # target variable 2
-            centerApproachSpeed = (xCenterDisplacement - lastXCenterDisplacement) * fps # target variable 3
+            occupiedHeight = deltaY / cv2.getWindowImageRect('img')[3]  # target variable 1
+            xCenterDisplacement = (cv2.getWindowImageRect('img')[2] / 2) - center[0]  # target variable 2
+            centerApproachSpeed = (xCenterDisplacement - lastXCenterDisplacement) * fps  # target variable 3
 
-            lastXCenterDisplacement = xCenterDisplacement # displacement updation
+            lastXCenterDisplacement = xCenterDisplacement  # displacement updation
 
         # FPS calculation
         fps = 1 / (time.time() - curTime)
@@ -173,19 +176,20 @@ def main():
         cv2.putText(img, '{0:.2f}'.format(fps), (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
 
         # data output
-        print('--------------\n' + 'yBigness (%) = {0:.2f}\n'.format(occupiedHeight)
+        print('--------------\n' + 'FPS = {0:.2f}\n'.format(fps)
+              + 'yBigness (%) = {0:.2f}\n'.format(occupiedHeight)
               + 'Displacement from center (px) = {0:.2f}\n'.format(xCenterDisplacement)
               + 'Speed of center approach (px/s) = {0:.2f}\n'.format(centerApproachSpeed)
               + '--------------\n')
 
         cv2.imshow("img", img)
-        imPrev = img
 
         if cv2.waitKey(1) == ord('q'):
             break
 
     cap.release()
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     main()

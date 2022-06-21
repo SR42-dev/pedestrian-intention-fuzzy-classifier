@@ -137,11 +137,14 @@ def main():
     # capture frames from a camera
     cap = cv2.VideoCapture('resources/testVideos/test0.mp4')
     detector = PoseDetector()
-    imPrev = None
 
     curTime = time.time() # start time
     fps = 0
+
     lastXCenterDisplacement = 0
+    occupiedHeight = 0
+    xCenterDisplacement = 0
+    centerApproachSpeed = 0
 
     while True:
 
@@ -173,13 +176,13 @@ def main():
         cv2.putText(img, '{0:.2f}'.format(fps), (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
 
         # data output
-        print('--------------\n' + 'yBigness (%) = {0:.2f}\n'.format(occupiedHeight)
+        print('--------------\n' + 'FPS = {0:.2f}\n'.format(fps)
+              + 'yBigness (%) = {0:.2f}\n'.format(occupiedHeight)
               + 'Displacement from center (px) = {0:.2f}\n'.format(xCenterDisplacement)
               + 'Speed of center approach (px/s) = {0:.2f}\n'.format(centerApproachSpeed)
               + '--------------\n')
 
         cv2.imshow("img", img)
-        imPrev = img
 
         if cv2.waitKey(1) == ord('q'):
             break
