@@ -139,15 +139,26 @@ def main():
     imPrev = None
 
     while True:
-        
+
         success, img = cap.read()
         img = detector.findPose(img)
         lmList, bboxInfo = detector.findPosition(img, bboxWithHands=False)
+
         if bboxInfo:
             center = bboxInfo["center"]
             cv2.circle(img, center, 5, (255, 0, 255), cv2.FILLED)
 
+            # finding the difference between highest landmark and lowest landmark in pixels
+            yLocations = []
+            for lm in lmList :
+                yLocations.append(lm[2])
+            deltaY = max(yLocations) - min(yLocations)
+            occupiedHeight = deltaY / cv2.getWindowImageRect('img')[3]
+            print(occupiedHeight)
+
+
         cv2.imshow("img", img)
+        imPrev = img
         if cv2.waitKey(1) == ord('q'):
             break
 
