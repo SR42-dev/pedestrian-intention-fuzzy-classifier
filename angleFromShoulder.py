@@ -138,7 +138,7 @@ with mp_pose.Pose(
         cosphi2 = b2 / B
         cosphi3 = b3 / B
 
-        realAngle = ((np.rad2deg(theta) / 45) - 1) * 180
+        realAngle = (((np.rad2deg(theta) / 45) - 1) * 180) # accounting for observed errors
 
         # print("{0:.2f} + ".format(a), "{0:.2f}i + ".format(b1), "{0:.2f}j + ".format(b2), "{0:.2f}k".format(b3))
         # print('{0:.2f}'.format(A) + 'cos({0:.2f}) + '.format(np.rad2deg(theta)) + '{0:.2f}'.format(A) + 'sin({0:.2f})'.format(np.rad2deg(theta)) + '({0:.2f}i'.format(cosphi1) + ' + {0:.2f}j + '.format(cosphi2) + '{0:.2f}k)'.format(cosphi3))
