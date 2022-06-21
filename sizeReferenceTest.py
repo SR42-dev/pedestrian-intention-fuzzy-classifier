@@ -13,5 +13,5 @@ while True:
     cv2.imshow('Image', img)
 
     if cv2.waitKey(1) == ord('q'):
-        print(np.math.sqrt(((diameter[0][0] - diameter[1][0]) ** 2) + ((diameter[0][1] - diameter[1][1]) ** 2)))
+        print('Diameter (px) = {0:.2f}'.format(np.math.sqrt(((diameter[0][0] - diameter[1][0]) ** 2) + ((diameter[0][1] - diameter[1][1]) ** 2))))
         break
