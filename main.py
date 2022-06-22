@@ -250,7 +250,7 @@ def main():
             # print(lmls)
             # print(lmrs)
 
-            # cv2.putText(img, 'Angle : {0:.2f}'.format(angleOfApproach), (50, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 255, 0), 5)
+            cv2.putText(img, 'Angle : {0:.2f}'.format(angleOfApproach), (50, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 255, 0), 5)
             cv2.circle(img, (lmls[1], lmls[2]), 5, (255, 255, 255), cv2.FILLED)
             cv2.circle(img, (lmrs[1], lmrs[2]), 5, (255, 255, 255), cv2.FILLED)
 
