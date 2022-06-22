@@ -1,4 +1,6 @@
-Predict pedestrian positions on frame based on collected data and compare with reality.
+Predict pedestrian positions on frame based on collected data and compare with reality (show the path of the camera and that of the pedestrian intersecting with IRL test video)
+
+Predict if there will be a collision in the case of the intersecting path.
 
 Extend algorithm to multiple pedestrians & collect data (angle of approach, speed, displacement etc.).
 

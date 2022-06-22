@@ -203,7 +203,7 @@ class PoseDetector:
 
 def main():
     # capture frames from a camera
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture('resources/testVideos/test2.mp4')
     detector = PoseDetector()
 
     curTime = time.time()  # start time
@@ -245,7 +245,6 @@ def main():
 
             # angle of approach reporting currently accurate only between the range of 30 and 160 degrees
             angleOfApproach = detector.angleOfOrientation(lmls, lmrs) # target variable 4
-
 
             # print(lmls)
             # print(lmrs)
