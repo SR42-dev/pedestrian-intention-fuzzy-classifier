@@ -1,5 +1,7 @@
-Extend algorithm to multiple pedestrians & collect data (angle of approach, speed, displacement etc.)
+Predict pedestrian positions on frame based on collected data and compare with reality.
 
-Figure out formulae to get collision probability from obtained variables
+Extend algorithm to multiple pedestrians & collect data (angle of approach, speed, displacement etc.).
 
-Draw decision making automata & fuzzy logic map for collision prediction
+Figure out formulae to get collision probability from obtained variables.
+
+Draw decision making automata & fuzzy logic map for collision prediction.
