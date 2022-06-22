@@ -246,6 +246,7 @@ def main():
             # angle of approach reporting currently accurate only between the range of 30 and 160 degrees
             angleOfApproach = detector.angleOfOrientation(lmls, lmrs) # target variable 4
 
+
             # print(lmls)
             # print(lmrs)
 
