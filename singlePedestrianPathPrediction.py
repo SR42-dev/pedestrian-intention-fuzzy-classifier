@@ -32,12 +32,13 @@ def look_at(eye: np.array, target: np.array):
 
 
 class PoseDetector:
+
     """
     Estimates Pose points of a human body using the mediapipe library.
     """
 
-    def __init__(self, mode=False, smooth=True,
-                 detectionCon=0.5, trackCon=0.5):
+    def __init__(self, mode=False, smooth=True, detectionCon=0.5, trackCon=0.5):
+
         """
         :param mode: In static mode, detection is done on each image: slower
         :param upBody: Upper boy only flag
@@ -59,12 +60,14 @@ class PoseDetector:
                                      min_tracking_confidence=self.trackCon)
 
     def findPose(self, img, draw=True):
+
         """
         Find the pose landmarks in an Image of BGR color space.
         :param img: Image to find the pose in.
         :param draw: Flag to draw the output on the image.
         :return: Image with or without drawings
         """
+
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         self.results = self.pose.process(imgRGB)
         if self.results.pose_landmarks:
@@ -74,6 +77,7 @@ class PoseDetector:
         return img
 
     def findPosition(self, img, draw=True, bboxWithHands=False):
+
         self.lmList = []
         self.bboxInfo = {}
         if self.results.pose_landmarks:
@@ -106,6 +110,7 @@ class PoseDetector:
         return self.lmList, self.bboxInfo
 
     def findAngle(self, img, p1, p2, p3, draw=True):
+
         """
         Finds angle between three points. Inputs index values of landmarks
         instead of the actual points.
@@ -138,11 +143,11 @@ class PoseDetector:
             cv2.circle(img, (x2, y2), 15, (0, 0, 255), 2)
             cv2.circle(img, (x3, y3), 10, (0, 0, 255), cv2.FILLED)
             cv2.circle(img, (x3, y3), 15, (0, 0, 255), 2)
-            cv2.putText(img, str(int(angle)), (x2 - 50, y2 + 50),
-                        cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 2)
+            cv2.putText(img, str(int(angle)), (x2 - 50, y2 + 50), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 2)
         return angle
 
     def findDistance(self, p1, p2, img, draw=True, r=15, t=3):
+
         x1, y1 = self.lmList[p1][1:]
         x2, y2 = self.lmList[p2][1:]
         cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
@@ -191,19 +196,29 @@ class PoseDetector:
             # converting quaternion to polar form
             A = np.math.sqrt((a ** 2) + (b1 ** 2) + (b2 ** 2) + (b3 ** 2))
             theta = np.math.acos(a / A)
-            B = np.math.sqrt((A ** 2) - (a ** 2))
-            cosphi1 = b1 / B
-            cosphi2 = b2 / B
-            cosphi3 = b3 / B
+            # B = np.math.sqrt((A ** 2) - (a ** 2))
+            # cosphi1 = b1 / B
+            # cosphi2 = b2 / B
+            # cosphi3 = b3 / B
 
             realAngle = ((np.rad2deg(theta) / 45) - 1) * 180
 
             return realAngle
 
+    def futureXY(self, img, init, angleOfApproach, centerApproachSpeed, timeToFuture, draw=True):
+
+        futureX = init[0] + ((centerApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach))
+        futureY = init[1] # currently doesn't account for horizontal terrain changes on the robot's path
+
+        if draw == True :
+            cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+
+        return futureX, futureY
 
 def main():
+
     # capture frames from a camera
-    cap = cv2.VideoCapture('resources/testVideos/test2.mp4')
+    cap = cv2.VideoCapture('resources/testVideos/test0.mp4')
     detector = PoseDetector()
 
     curTime = time.time()  # start time
@@ -215,11 +230,15 @@ def main():
     centerApproachSpeed = 0
     angleOfApproach = 0
 
+    futureX = 0
+    futureY = 0
+    timeToFuture = 10
+
     while True:
 
         success, img = cap.read()
         img = detector.findPose(img)
-        lmList, bboxInfo = detector.findPosition(img, bboxWithHands=False)
+        lmList, bboxInfo = detector.findPosition(img, draw=False, bboxWithHands=False)
 
         if bboxInfo:
 
@@ -230,6 +249,7 @@ def main():
             # finding the difference between highest landmark and lowest landmark in pixels
             yLocations = []
             for lm in lmList:
+
                 yLocations.append(lm[2])
 
                 if (lm[0] == 12):
@@ -245,6 +265,9 @@ def main():
 
             # angle of approach reporting currently accurate only between the range of 30 and 160 degrees
             angleOfApproach = detector.angleOfOrientation(lmls, lmrs) # target variable 4
+
+            # predicting & drawing the future location of the target pedestrian
+            futureX, futureY = detector.futureXY(img, center, angleOfApproach, centerApproachSpeed, timeToFuture)
 
             # print(lmls)
             # print(lmrs)
@@ -265,7 +288,9 @@ def main():
               + 'yBigness (%) = {0:.2f}\n'.format(occupiedHeight)
               + 'Displacement from center (px) = {0:.2f}\n'.format(xCenterDisplacement)
               + 'Speed of center approach (px/s) = {0:.2f}\n'.format(centerApproachSpeed)
-              + 'Angle of approach (px/s) = {0:.2f}\n'.format(angleOfApproach)
+              + 'Angle of approach (px/s) = {0:.2f}\n\n'.format(angleOfApproach)
+              + 'Time to future (s) = {0:.2f}\n'.format(timeToFuture)
+              + 'Predicted future location (px, px) = {0:.2f}, '.format(futureX) + '{0:.2f} \n'.format(futureY)
               + '--------------\n')
 
         cv2.imshow("img", img)
