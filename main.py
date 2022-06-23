@@ -277,10 +277,10 @@ def main():
                     lmls = lm
 
             deltaY = max(yLocations) - min(yLocations)
-            occupiedHeight = deltaY / 432  # target variable 1, 432 is the current window height
-            xCenterDisplacement = (768 / 2) - center[0]  # target variable 2, 768 is the current window breadth
+            occupiedHeight = deltaY / 432
+            xCenterDisplacement = (768 / 2) - center[0]
             yCenterDisplacement = (432 / 2) - center[1]
-            centerXApproachSpeed = (xCenterDisplacement - lastXCenterDisplacement) * fps  # target variable 3
+            centerXApproachSpeed = (xCenterDisplacement - lastXCenterDisplacement) * fps
             centerYApproachSpeed = (yCenterDisplacement - lastYCenterDisplacement) * fps
 
             # relative bot approach speed indicator value
@@ -295,11 +295,11 @@ def main():
             futureX, futureY = detector.futureXY(img, center, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, drawPath=True)
 
             # collision prediction wrt botApproachSpeed
-            futureDeltaY = botApproachSpeed * timeToFuture  # predicted closeness of the pedestrian to the bot in the future
-            if (futureDeltaY > threshold) \
-                    and ((futureX > bboxInfo['bbox'][0]) and (futureX < (bboxInfo['bbox'][0] + bboxInfo['bbox'][2])))\
-                    and ((futureX > bboxInfo['bbox'][1]) and (futureX < (bboxInfo['bbox'][1] + bboxInfo['bbox'][3]))):
-                cv2.putText(img, 'Collision imminent', (50, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 255, 0), 5)
+            # futureDeltaY = botApproachSpeed * timeToFuture  # predicted closeness of the pedestrian to the bot in the future
+            # if (futureDeltaY > threshold) \
+            #         and ((futureX > bboxInfo['bbox'][0]) and (futureX < (bboxInfo['bbox'][0] + bboxInfo['bbox'][2])))\
+            #         and ((futureX > bboxInfo['bbox'][1]) and (futureX < (bboxInfo['bbox'][1] + bboxInfo['bbox'][3]))):
+            #     cv2.putText(img, 'Collision imminent', (50, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 255, 0), 5)
 
             # cv2.putText(img, 'Angle : {0:.2f}'.format(angleOfApproach), (50, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 255, 0), 5)
             cv2.circle(img, (lmls[1], lmls[2]), 5, (255, 255, 255), cv2.FILLED)
