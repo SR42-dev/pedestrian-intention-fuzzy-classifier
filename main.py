@@ -307,7 +307,7 @@ def main():
 
             # filtering angle data stream with moving averages
             frameNumber += 1
-            cv2.putText(img, '{0:.2f}'.format(frameNumber), (50, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 255, 0), 5)
+            cv2.putText(img, '{0:d}'.format(frameNumber), (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
             filter = StreamingMovingAverage(100)
             angleOfApproach = filter.process(angleOfApproach)
 
