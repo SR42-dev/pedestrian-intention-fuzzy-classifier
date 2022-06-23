@@ -31,6 +31,21 @@ def look_at(eye: np.array, target: np.array):
     return rot_matrix
 
 
+class StreamingMovingAverage:
+
+    def __init__(self, window_size):
+        self.window_size = window_size
+        self.values = []
+        self.sum = 0
+
+    def process(self, value):
+        self.values.append(value)
+        self.sum += value
+        if len(self.values) > self.window_size:
+            self.sum -= self.values.pop(0)
+        return float(self.sum) / len(self.values)
+
+
 class PoseDetector:
 
     """
@@ -233,6 +248,7 @@ def main():
 
     curTime = time.time()  # start time
     fps = 0
+    frameNumber = 0
 
     lastXCenterDisplacement = 0
     lastYCenterDisplacement = 0
@@ -287,9 +303,13 @@ def main():
             botApproachSpeed = (deltaY - lastDeltaY) * fps
 
             # angle of approach reporting currently accurate only between the range of 30 and 160 degrees
-            angleOfApproach = detector.angleOfOrientation(lmls, lmrs) # target variable 4
-            # print(lmls)
-            # print(lmrs)
+            angleOfApproach = detector.angleOfOrientation(lmls, lmrs)
+
+            # filtering angle data stream with moving averages
+            frameNumber += 1
+            cv2.putText(img, '{0:.2f}'.format(frameNumber), (50, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 255, 0), 5)
+            filter = StreamingMovingAverage(100)
+            angleOfApproach = filter.process(angleOfApproach)
 
             # predicting & drawing the future location of the target pedestrian
             futureX, futureY = detector.futureXY(img, center, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, drawPath=True)

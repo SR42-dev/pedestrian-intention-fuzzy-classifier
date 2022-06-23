@@ -1,6 +1,6 @@
 Predict pedestrian positions on frame based on collected data and compare with reality (show the path of the camera and that of the pedestrian intersecting with IRL test video)
-- give 2D representation of pedestrian path
-- hardcode robot path representation
+- hardcode overlay and visualize 2D representation of 3D path
+- implement any of the following filters : *kalmann*, low pass, high pass, moving average, exponential moving average
 - predict if there will be a collision in the case of the intersecting path.
 
 Figure out formulae to get collision probability from obtained variables.
