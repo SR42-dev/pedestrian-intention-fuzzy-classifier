@@ -205,10 +205,10 @@ class PoseDetector:
 
             return realAngle
 
-    def futureXY(self, img, init, angleOfApproach, centerApproachSpeed, timeToFuture, drawPos=True, drawPath=False):
+    def futureXY(self, img, init, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, drawPos=True, drawPath=False):
 
-        futureX = init[0] + ((centerApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach))
-        futureY = init[1] # currently doesn't account for horizontal terrain changes on the robot's path
+        futureX = init[0] + ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach))
+        futureY = init[1] + ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) # currently doesn't account for horizontal terrain changes on the robot's path
 
         if drawPos == True :
 
@@ -224,7 +224,7 @@ class PoseDetector:
 
 def main():
 
-    # capture frames from a camera
+    pathOverlay = cv2.imread('resources/pathOverlayBlack.png')
     cap = cv2.VideoCapture('resources/testVideos/test0.mp4')
     cap.set(3, 768)
     cap.set(4, 432)
@@ -235,9 +235,11 @@ def main():
     fps = 0
 
     lastXCenterDisplacement = 0
+    lastYCenterDisplacement = 0
     occupiedHeight = 0
     xCenterDisplacement = 0
-    centerApproachSpeed = 0
+    centerXApproachSpeed = 0
+    centerYApproachSpeed = 0
     angleOfApproach = 0
     lastDeltaY = 0
 
@@ -250,6 +252,11 @@ def main():
 
         success, img = cap.read()
         img = detector.findPose(img)
+
+        # resizing adding path overlay
+        pathOverlay = cv2.resize(pathOverlay, (768, 432))
+        img = cv2.addWeighted(img,0.7,pathOverlay,0.3,0)
+
         lmList, bboxInfo = detector.findPosition(img, draw=False, bboxWithHands=False)
 
         if bboxInfo:
@@ -271,8 +278,10 @@ def main():
 
             deltaY = max(yLocations) - min(yLocations)
             occupiedHeight = deltaY / 432  # target variable 1, 432 is the current window height
-            xCenterDisplacement = 768 - center[0]  # target variable 2, 768 is the current window breadth
-            centerApproachSpeed = (xCenterDisplacement - lastXCenterDisplacement) * fps  # target variable 3
+            xCenterDisplacement = (768 / 2) - center[0]  # target variable 2, 768 is the current window breadth
+            yCenterDisplacement = (432 / 2) - center[1]
+            centerXApproachSpeed = (xCenterDisplacement - lastXCenterDisplacement) * fps  # target variable 3
+            centerYApproachSpeed = (yCenterDisplacement - lastYCenterDisplacement) * fps
 
             # relative bot approach speed indicator value
             botApproachSpeed = (deltaY - lastDeltaY) * fps
@@ -283,7 +292,7 @@ def main():
             # print(lmrs)
 
             # predicting & drawing the future location of the target pedestrian
-            futureX, futureY = detector.futureXY(img, center, angleOfApproach, centerApproachSpeed, timeToFuture, drawPath=True)
+            futureX, futureY = detector.futureXY(img, center, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, drawPath=True)
 
             # collision prediction wrt botApproachSpeed
             futureDeltaY = botApproachSpeed * timeToFuture  # predicted closeness of the pedestrian to the bot in the future
@@ -297,6 +306,7 @@ def main():
             cv2.circle(img, (lmrs[1], lmrs[2]), 5, (255, 255, 255), cv2.FILLED)
 
             lastXCenterDisplacement = xCenterDisplacement  # displacement updation
+            lastYCenterDisplacement = yCenterDisplacement
             lastDeltaY = deltaY
 
         # FPS calculation
@@ -305,14 +315,14 @@ def main():
         cv2.putText(img, '{0:.2f}'.format(fps), (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
 
         # data output
-        print('--------------\n' + 'FPS = {0:.2f}\n'.format(fps)
-              + 'yBigness (%) = {0:.2f}\n'.format(occupiedHeight)
-              + 'Displacement from center (px) = {0:.2f}\n'.format(xCenterDisplacement)
-              + 'Speed of center approach (px/s) = {0:.2f}\n'.format(centerApproachSpeed)
-              + 'Angle of approach (px/s) = {0:.2f}\n\n'.format(angleOfApproach)
-              + 'Time to future (s) = {0:.2f}\n'.format(timeToFuture)
-              + 'Predicted future location (px, px) = {0:.2f}, '.format(futureX) + '{0:.2f} \n'.format(futureY)
-              + '--------------\n')
+        # print('--------------\n' + 'FPS = {0:.2f}\n'.format(fps)
+        #       + 'yBigness (%) = {0:.2f}\n'.format(occupiedHeight)
+        #       + 'Displacement from center (px) = {0:.2f}\n'.format(xCenterDisplacement)
+        #       + 'Speed of center approach (px/s) = {0:.2f}\n'.format(centerXApproachSpeed)
+        #       + 'Angle of approach (px/s) = {0:.2f}\n\n'.format(angleOfApproach)
+        #       + 'Time to future (s) = {0:.2f}\n'.format(timeToFuture)
+        #       + 'Predicted future location (px, px) = {0:.2f}, '.format(futureX) + '{0:.2f} \n'.format(futureY)
+        #       + '--------------\n')
 
         cv2.imshow("img", img)
 
