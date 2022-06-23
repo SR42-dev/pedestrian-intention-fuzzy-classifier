@@ -205,13 +205,20 @@ class PoseDetector:
 
             return realAngle
 
-    def futureXY(self, img, init, angleOfApproach, centerApproachSpeed, timeToFuture, draw=True):
+    def futureXY(self, img, init, angleOfApproach, centerApproachSpeed, timeToFuture, drawPos=True, drawPath=False):
 
         futureX = init[0] + ((centerApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach))
         futureY = init[1] # currently doesn't account for horizontal terrain changes on the robot's path
 
-        if draw == True :
+        if drawPos == True :
+
+            # future location on frame
             cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+
+        if drawPath == True:
+
+            # predicted path line
+            cv2.line(img, init, (int(futureX), int(futureY)), (255, 0, 255), 3)
 
         return futureX, futureY
 
@@ -219,6 +226,9 @@ def main():
 
     # capture frames from a camera
     cap = cv2.VideoCapture('resources/testVideos/test0.mp4')
+    cap.set(3, 768)
+    cap.set(4, 432)
+
     detector = PoseDetector()
 
     curTime = time.time()  # start time
@@ -229,10 +239,12 @@ def main():
     xCenterDisplacement = 0
     centerApproachSpeed = 0
     angleOfApproach = 0
+    lastDeltaY = 0
 
     futureX = 0
     futureY = 0
-    timeToFuture = 10
+    timeToFuture = 1 # all collision predictions are made for these many time units into the future
+    threshold = 10 # collision threshold for futureDeltaY
 
     while True:
 
@@ -258,25 +270,35 @@ def main():
                     lmls = lm
 
             deltaY = max(yLocations) - min(yLocations)
-
             occupiedHeight = deltaY / cv2.getWindowImageRect('img')[3]  # target variable 1
             xCenterDisplacement = (cv2.getWindowImageRect('img')[2] / 2) - center[0]  # target variable 2
             centerApproachSpeed = (xCenterDisplacement - lastXCenterDisplacement) * fps  # target variable 3
 
+            # relative bot approach speed indicator value
+            botApproachSpeed = (deltaY - lastDeltaY) * fps
+
             # angle of approach reporting currently accurate only between the range of 30 and 160 degrees
             angleOfApproach = detector.angleOfOrientation(lmls, lmrs) # target variable 4
-
-            # predicting & drawing the future location of the target pedestrian
-            futureX, futureY = detector.futureXY(img, center, angleOfApproach, centerApproachSpeed, timeToFuture)
-
             # print(lmls)
             # print(lmrs)
+
+            # predicting & drawing the future location of the target pedestrian
+            futureX, futureY = detector.futureXY(img, center, angleOfApproach, centerApproachSpeed, timeToFuture, drawPath=True)
+
+            # collision prediction wrt botApproachSpeed
+            futureDeltaY = botApproachSpeed * timeToFuture  # predicted closeness of the pedestrian to the bot in the future
+            if (futureDeltaY > threshold) \
+                    and ((futureX > bboxInfo['bbox'][0]) and (futureX < (bboxInfo['bbox'][0] + bboxInfo['bbox'][2])))\
+                    and ((futureX > bboxInfo['bbox'][1]) and (futureX < (bboxInfo['bbox'][1] + bboxInfo['bbox'][3]))):
+                cv2.putText(img, 'Collision imminent', (50, 70), cv2.FONT_HERSHEY_PLAIN, 3,
+                            (255, 255, 0), 5)
 
             # cv2.putText(img, 'Angle : {0:.2f}'.format(angleOfApproach), (50, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 255, 0), 5)
             cv2.circle(img, (lmls[1], lmls[2]), 5, (255, 255, 255), cv2.FILLED)
             cv2.circle(img, (lmrs[1], lmrs[2]), 5, (255, 255, 255), cv2.FILLED)
 
             lastXCenterDisplacement = xCenterDisplacement  # displacement updation
+            lastDeltaY = deltaY
 
         # FPS calculation
         fps = 1 / (time.time() - curTime)
