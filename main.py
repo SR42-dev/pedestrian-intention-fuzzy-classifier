@@ -2,7 +2,9 @@ import cv2
 import math
 import time
 import numpy as np
+import pandas as pd
 import mediapipe as mp
+import matplotlib.pyplot as plt
 
 
 # rotation matrix helper functions
@@ -30,7 +32,7 @@ def look_at(eye: np.array, target: np.array):
     rot_matrix = np.matrix([axis_x, axis_y, axis_z]).transpose()
     return rot_matrix
 
-
+# filter(s)
 class StreamingMovingAverage:
 
     def __init__(self, window_size):
@@ -46,6 +48,7 @@ class StreamingMovingAverage:
         return float(self.sum) / len(self.values)
 
 
+# pose detector class
 class PoseDetector:
 
     """
@@ -143,8 +146,7 @@ class PoseDetector:
         x3, y3 = self.lmList[p3][1:]
 
         # Calculate the Angle
-        angle = math.degrees(math.atan2(y3 - y2, x3 - x2) -
-                             math.atan2(y1 - y2, x1 - x2))
+        angle = math.degrees(math.atan2(y3 - y2, x3 - x2) - math.atan2(y1 - y2, x1 - x2))
         if angle < 0:
             angle += 360
 
@@ -224,17 +226,6 @@ class PoseDetector:
 
         futureX = init[0] + ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach))
         futureY = init[1] + ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) # currently doesn't account for horizontal terrain changes on the robot's path
-
-        if drawPos == True :
-
-            # future location on frame
-            cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
-
-        if drawPath == True:
-
-            # predicted path line
-            cv2.line(img, init, (int(futureX), int(futureY)), (255, 0, 255), 3)
-
         return futureX, futureY
 
 def main():
@@ -263,6 +254,15 @@ def main():
     futureY = 0
     timeToFuture = 1 # all collision predictions are made for these many time units into the future
     threshold = 10 # collision threshold for futureDeltaY
+
+    # filter settings
+    angleFilter = StreamingMovingAverage(10)
+    xFilter = StreamingMovingAverage(10)
+    yFilter = StreamingMovingAverage(10)
+
+    # data plot settings
+    collectedData = []
+    filteredData = []
 
     while True:
 
@@ -308,11 +308,13 @@ def main():
             # filtering angle data stream with moving averages
             frameNumber += 1
             cv2.putText(img, '{0:d}'.format(frameNumber), (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
-            filter = StreamingMovingAverage(100)
-            angleOfApproach = filter.process(angleOfApproach)
 
-            # predicting & drawing the future location of the target pedestrian
-            futureX, futureY = detector.futureXY(img, center, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, drawPath=True)
+            angleOfApproach = angleFilter.process(angleOfApproach)
+
+            # predicting, filtering & drawing the future location of the target pedestrian
+            futureX, futureY = detector.futureXY(img, center, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture)
+            cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+            cv2.line(img, center, (int(futureX), int(futureY)), (255, 255, 255), 2)
 
             # collision prediction wrt botApproachSpeed
             # futureDeltaY = botApproachSpeed * timeToFuture  # predicted closeness of the pedestrian to the bot in the future
@@ -348,6 +350,13 @@ def main():
 
         if cv2.waitKey(1) == ord('q'):
             break
+
+    # data visualization
+    df = pd.DataFrame()
+    df['raw'] = collectedData
+    df['filtered'] = filteredData
+    df.plot()
+    plt.show()
 
     cap.release()
     cv2.destroyAllWindows()
