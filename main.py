@@ -222,6 +222,7 @@ class PoseDetector:
 
             return realAngle
 
+    # implicit fuzzy classification implemented here
     def futureXY(self, init, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture):
 
         if angleOfApproach > 0 and angleOfApproach < 180 :
@@ -239,7 +240,7 @@ class PoseDetector:
 def main():
 
     pathOverlay = cv2.imread('resources/pathOverlayBlack.png')
-    cap = cv2.VideoCapture('resources/testVideos/test1.mp4')
+    cap = cv2.VideoCapture(1)
     cap.set(3, 768)
     cap.set(4, 432)
 
@@ -325,11 +326,12 @@ def main():
             # filtering, predicting & drawing the future location of the target pedestrian
             initX = xFilter.process(center[0])
             initY = yFilter.process(center[1])
-            futureX, futureY = detector.futureXY(img, (initX, initY), angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture)
+            futureX, futureY = detector.futureXY((initX, initY), angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture)
             # futureX = 768 - futureX
             # futureY = 432 - futureY
             cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
-            cv2.line(img, center, (int(futureX), int(futureY)), (255, 255, 255), 2)
+            cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+            cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
 
             # collision prediction wrt botApproachSpeed
             # futureDeltaY = botApproachSpeed * timeToFuture  # predicted closeness of the pedestrian to the bot in the future
@@ -362,7 +364,7 @@ def main():
         #       + '--------------\n')
 
         cv2.imshow("img", img)
-        # time.sleep(0.25)
+        #time.sleep(0.2)
 
         if cv2.waitKey(1) == ord('q'):
             break
