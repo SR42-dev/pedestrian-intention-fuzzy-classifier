@@ -117,7 +117,7 @@ class PoseDetector:
             y1 = self.lmList[1][2] - ad
             bbox = (x1, y1, x2 - x1, y2 - y1)
             cx, cy = bbox[0] + (bbox[2] // 2), \
-                     bbox[1] + bbox[3] // 2
+                     (bbox[1] + bbox[3] // 2) - 40
 
             self.bboxInfo = {"bbox": bbox, "center": (cx, cy)}
 
@@ -222,16 +222,24 @@ class PoseDetector:
 
             return realAngle
 
-    def futureXY(self, img, init, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, drawPos=True, drawPath=False):
+    def futureXY(self, init, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture):
 
-        futureX = init[0] + ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach))
-        futureY = init[1] + ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) # currently doesn't account for horizontal terrain changes on the robot's path
+        if angleOfApproach > 0 and angleOfApproach < 180 :
+
+            futureX = init[0] + ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach))
+            futureY = init[1] + ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach))
+
+        else :
+
+            futureX = init[0] + ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach))
+            futureY = init[1] + ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach))
+
         return futureX, futureY
 
 def main():
 
     pathOverlay = cv2.imread('resources/pathOverlayBlack.png')
-    cap = cv2.VideoCapture('resources/testVideos/test0.mp4')
+    cap = cv2.VideoCapture('resources/testVideos/test1.mp4')
     cap.set(3, 768)
     cap.set(4, 432)
 
@@ -267,9 +275,12 @@ def main():
     while True:
 
         success, img = cap.read()
+        img = cv2.resize(img, (768, 432))
+        img = cv2.flip(img, 1)
+
         img = detector.findPose(img)
 
-        # resizing adding path overlay
+        # resizing & adding path overlay
         pathOverlay = cv2.resize(pathOverlay, (768, 432))
         img = cv2.addWeighted(img,0.7,pathOverlay,0.3,0)
 
@@ -304,15 +315,19 @@ def main():
 
             # angle of approach reporting currently accurate only between the range of 30 and 160 degrees
             angleOfApproach = detector.angleOfOrientation(lmls, lmrs)
+            cv2.putText(img, '{0:.2f}'.format(angleOfApproach), (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
 
             # filtering angle data stream with moving averages
             frameNumber += 1
-            cv2.putText(img, '{0:d}'.format(frameNumber), (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
+            #cv2.putText(img, '{0:d}'.format(frameNumber), (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
+            #angleOfApproach = angleFilter.process(angleOfApproach)
 
-            angleOfApproach = angleFilter.process(angleOfApproach)
-
-            # predicting, filtering & drawing the future location of the target pedestrian
-            futureX, futureY = detector.futureXY(img, center, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture)
+            # filtering, predicting & drawing the future location of the target pedestrian
+            initX = xFilter.process(center[0])
+            initY = yFilter.process(center[1])
+            futureX, futureY = detector.futureXY(img, (initX, initY), angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture)
+            # futureX = 768 - futureX
+            # futureY = 432 - futureY
             cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
             cv2.line(img, center, (int(futureX), int(futureY)), (255, 255, 255), 2)
 
@@ -347,16 +362,17 @@ def main():
         #       + '--------------\n')
 
         cv2.imshow("img", img)
+        # time.sleep(0.25)
 
         if cv2.waitKey(1) == ord('q'):
             break
 
     # data visualization
-    df = pd.DataFrame()
-    df['raw'] = collectedData
-    df['filtered'] = filteredData
-    df.plot()
-    plt.show()
+    # df = pd.DataFrame()
+    # df['raw'] = collectedData
+    # df['filtered'] = filteredData
+    # df.plot()
+    # plt.show()
 
     cap.release()
     cv2.destroyAllWindows()
