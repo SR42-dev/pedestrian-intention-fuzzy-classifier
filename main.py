@@ -355,9 +355,23 @@ def main():
     xFilter = StreamingMovingAverage(10)
     yFilter = StreamingMovingAverage(10)
 
+    # data collection settings & initialization
+    df = pd.DataFrame()
+    leftShoulderX = []
+    leftShoulderY = []
+    rightShoulderX = []
+    rightShoulderY = []
+    occupiedHeights = []
+    predictedX = []
+    predictedY = []
+
     while True:
 
         success, img = cap.read()
+
+        if (cv2.waitKey(1) == ord('q')) or (not success):
+            break
+
         img = cv2.resize(img, (768, 432))
         img = cv2.flip(img, 1)
 
@@ -399,15 +413,6 @@ def main():
             initY = yFilter.process(center[1])
             futureX, futureY = detector.futureXY(img, lmls, lmrs, (initX, initY), angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, futureErrorThresholds)
 
-            # collision prediction wrt botApproachSpeed
-            # botApproachSpeed = (deltaY - lastDeltaY) * fps # relative bot approach speed indicator value taking target pedestrian's apparent height into account
-            # futureDeltaY = botApproachSpeed * timeToFuture  # predicted closeness of the pedestrian to the bot in the future
-            # if (futureDeltaY > threshold) \
-            #         and ((futureX > bboxInfo['bbox'][0]) and (futureX < (bboxInfo['bbox'][0] + bboxInfo['bbox'][2])))\
-            #         and ((futureX > bboxInfo['bbox'][1]) and (futureX < (bboxInfo['bbox'][1] + bboxInfo['bbox'][3]))):
-            #     cv2.putText(img, 'Collision imminent', (50, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 255, 0), 5)
-
-            # cv2.putText(img, 'Angle : {0:.2f}'.format(angleOfApproach), (50, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 255, 0), 5)
             cv2.circle(img, (lmls[1], lmls[2]), 5, (255, 255, 255), cv2.FILLED)
             cv2.circle(img, (lmrs[1], lmrs[2]), 5, (255, 255, 255), cv2.FILLED)
 
@@ -429,6 +434,15 @@ def main():
             else:
                 pass
 
+            # data collection
+            leftShoulderX.append(lmls[1])
+            leftShoulderY.append(lmls[2])
+            rightShoulderX.append(lmrs[1])
+            rightShoulderY.append(lmrs[2])
+            occupiedHeights.append(occupiedHeight)
+            predictedX.append(futureX)
+            predictedY.append(futureY)
+
         # FPS calculation
         fps = 1 / (time.time() - curTime)
         curTime = time.time()
@@ -438,9 +452,17 @@ def main():
         cv2.imshow("img", img)
         #time.sleep(0.2)
 
-        if cv2.waitKey(1) == ord('q'):
-            break
+    # editing & saving the dataframe in .csv format
+    df['leftShoulderX'] = leftShoulderX
+    df['leftShoulderY'] = leftShoulderY
+    df['rightShoulderX'] = rightShoulderX
+    df['rightShoulderY'] = rightShoulderY
+    df['occupiedHeights'] = occupiedHeights
+    df['predictedX'] = predictedX
+    df['predictedY'] = predictedY
+    df.to_csv('data.csv')
 
+    # releasing & destroying windows
     cap.release()
     cv2.destroyAllWindows()
 
