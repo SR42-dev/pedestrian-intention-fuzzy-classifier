@@ -355,10 +355,6 @@ def main():
     xFilter = StreamingMovingAverage(10)
     yFilter = StreamingMovingAverage(10)
 
-    # data plot initializations
-    collectedData = []
-    filteredData = []
-
     while True:
 
         success, img = cap.read()
@@ -444,13 +440,6 @@ def main():
 
         if cv2.waitKey(1) == ord('q'):
             break
-
-    # data visualization
-    # df = pd.DataFrame()
-    # df['raw'] = collectedData
-    # df['filtered'] = filteredData
-    # df.plot()
-    # plt.show()
 
     cap.release()
     cv2.destroyAllWindows()
