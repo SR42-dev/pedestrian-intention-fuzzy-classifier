@@ -2,7 +2,9 @@ import cv2
 import math
 import time
 import numpy as np
+import pandas as pd
 import mediapipe as mp
+import matplotlib.pyplot as plt
 
 
 # rotation matrix helper functions
@@ -30,7 +32,7 @@ def look_at(eye: np.array, target: np.array):
     rot_matrix = np.matrix([axis_x, axis_y, axis_z]).transpose()
     return rot_matrix
 
-
+# filter(s)
 class StreamingMovingAverage:
 
     def __init__(self, window_size):
@@ -46,7 +48,9 @@ class StreamingMovingAverage:
         return float(self.sum) / len(self.values)
 
 
+# pose detector class
 class PoseDetector:
+
     """
     Estimates Pose points of a human body using the mediapipe library.
     """
@@ -113,7 +117,7 @@ class PoseDetector:
             y1 = self.lmList[1][2] - ad
             bbox = (x1, y1, x2 - x1, y2 - y1)
             cx, cy = bbox[0] + (bbox[2] // 2), \
-                     bbox[1] + bbox[3] // 2
+                     (bbox[1] + bbox[3] // 2) - 40
 
             self.bboxInfo = {"bbox": bbox, "center": (cx, cy)}
 
@@ -142,8 +146,7 @@ class PoseDetector:
         x3, y3 = self.lmList[p3][1:]
 
         # Calculate the Angle
-        angle = math.degrees(math.atan2(y3 - y2, x3 - x2) -
-                             math.atan2(y1 - y2, x1 - x2))
+        angle = math.degrees(math.atan2(y3 - y2, x3 - x2) - math.atan2(y1 - y2, x1 - x2))
         if angle < 0:
             angle += 360
 
@@ -219,28 +222,103 @@ class PoseDetector:
 
             return realAngle
 
-    def futureXY(self, img, init, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture,
-                 drawPos=True, drawPath=False):
+    # implicit fuzzy classification implemented here
+    def futureXY(self, img, lmls, lmrs, init, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, draw=True):
 
-        futureX = init[0] + ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach))
-        futureY = init[1] + ((centerYApproachSpeed * timeToFuture) * np.math.cos(
-            angleOfApproach))  # currently doesn't account for horizontal terrain changes on the robot's path
+        if (angleOfApproach > 0) and (angleOfApproach < 90) and (centerXApproachSpeed > 0) and (centerYApproachSpeed < 0):
+            futureX = init[0] + np.math.sqrt(
+                ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2)
+            futureY = init[1] - np.math.sqrt(
+                ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2)
 
-        if drawPos == True:
-            # future location on frame
-            cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS,
-                           thickness=2)
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS,thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
 
-        if drawPath == True:
-            # predicted path line
-            cv2.line(img, init, (int(futureX), int(futureY)), (255, 0, 255), 3)
+        elif (angleOfApproach > 0) and (angleOfApproach < 90) and (centerXApproachSpeed < 0) and (centerYApproachSpeed > 0):
+            futureX = init[0] - np.math.sqrt(
+                ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2)
+            futureY = init[1] + np.math.sqrt(
+                ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2)
+
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+
+        elif (angleOfApproach > 90) and (angleOfApproach < 180) and (centerXApproachSpeed > 0) and (centerYApproachSpeed > 0):
+            futureX = init[0] + np.math.sqrt(
+                ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2)
+            futureY = init[1] + np.math.sqrt(
+                ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2)
+
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+
+        elif (angleOfApproach > 90) and (angleOfApproach < 180) and (centerXApproachSpeed < 0) and (centerYApproachSpeed < 0):
+            futureX = init[0] - np.math.sqrt(
+                ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2)
+            futureY = init[1] - np.math.sqrt(
+                ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2)
+
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+
+        elif (((angleOfApproach > -10) and (angleOfApproach < 10)) or ((angleOfApproach > 170) and (angleOfApproach < 190))) and (centerXApproachSpeed > 0) and ((centerYApproachSpeed > -10) and (centerYApproachSpeed < 10)):
+            futureX = init[0] + np.math.sqrt(
+                ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2)
+            futureY = init[1]
+
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+
+        elif (((angleOfApproach > -10) and (angleOfApproach < 10)) or ((angleOfApproach > 170) and (angleOfApproach < 190))) and (centerXApproachSpeed < 0) and ((centerYApproachSpeed > -10) and (centerYApproachSpeed < 10)):
+            futureX = init[0] - np.math.sqrt(
+                ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2)
+            futureY = init[1]
+
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+
+        elif ((angleOfApproach > 80) and (angleOfApproach < 100)) and ((centerXApproachSpeed > -10) and (centerXApproachSpeed < 10)) and (centerYApproachSpeed < 0):
+            futureX = init[0]
+            futureY = init[1] - np.math.sqrt(
+                ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2)
+
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+
+        elif ((angleOfApproach > 80) and (angleOfApproach < 100)) and ((centerXApproachSpeed > -10) and (centerXApproachSpeed < 10)) and (centerYApproachSpeed > 0):
+            futureX = init[0]
+            futureY = init[1] + np.math.sqrt(
+                ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2)
+
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+
+        else:
+            futureX = init[0]
+            futureY = init[1]
 
         return futureX, futureY
 
-
 def main():
-    pathOverlay = cv2.imread('resources/pathOverlayBlack.png')
-    cap = cv2.VideoCapture('resources/testVideos/test0.mp4')
+
+    pathOverlay = cv2.imread('resources/overlays/pathOverlayBlack.png')
+    cap = cv2.VideoCapture('resources/testVideos/test1.mp4')
     cap.set(3, 768)
     cap.set(4, 432)
 
@@ -261,17 +339,29 @@ def main():
 
     futureX = 0
     futureY = 0
-    timeToFuture = 1  # all collision predictions are made for these many time units into the future
-    threshold = 10  # collision threshold for futureDeltaY
+    timeToFuture = 1 # all collision predictions are made for these many time units into the future
+    threshold = 10 # collision threshold for futureDeltaY
+
+    # filter settings
+    angleFilter = StreamingMovingAverage(10)
+    xFilter = StreamingMovingAverage(10)
+    yFilter = StreamingMovingAverage(10)
+
+    # data plot settings
+    collectedData = []
+    filteredData = []
 
     while True:
 
         success, img = cap.read()
+        img = cv2.resize(img, (768, 432))
+        img = cv2.flip(img, 1)
+
         img = detector.findPose(img)
 
-        # resizing adding path overlay
+        # resizing & adding path overlay
         pathOverlay = cv2.resize(pathOverlay, (768, 432))
-        img = cv2.addWeighted(img, 0.7, pathOverlay, 0.3, 0)
+        img = cv2.addWeighted(img,0.7,pathOverlay,0.3,0)
 
         lmList, bboxInfo = detector.findPosition(img, draw=False, bboxWithHands=False)
 
@@ -294,8 +384,8 @@ def main():
 
             deltaY = max(yLocations) - min(yLocations)
             occupiedHeight = deltaY / 432
-            xCenterDisplacement = (768 / 2) - center[0]
-            yCenterDisplacement = (432 / 2) - center[1]
+            xCenterDisplacement = center[0]
+            yCenterDisplacement = center[1]
             centerXApproachSpeed = (xCenterDisplacement - lastXCenterDisplacement) * fps
             centerYApproachSpeed = (yCenterDisplacement - lastYCenterDisplacement) * fps
 
@@ -304,16 +394,19 @@ def main():
 
             # angle of approach reporting currently accurate only between the range of 30 and 160 degrees
             angleOfApproach = detector.angleOfOrientation(lmls, lmrs)
+            cv2.putText(img, '{0:.2f}'.format(angleOfApproach), (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
 
             # filtering angle data stream with moving averages
             frameNumber += 1
-            cv2.putText(img, '{0:.2f}'.format(frameNumber), (50, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 255, 0), 5)
-            filter = StreamingMovingAverage(100)
-            angleOfApproach = filter.process(angleOfApproach)
+            #cv2.putText(img, '{0:d}'.format(frameNumber), (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
+            #angleOfApproach = angleFilter.process(angleOfApproach)
 
-            # predicting & drawing the future location of the target pedestrian
-            futureX, futureY = detector.futureXY(img, center, angleOfApproach, centerXApproachSpeed,
-                                                 centerYApproachSpeed, timeToFuture, drawPath=True)
+            # filtering, predicting & drawing the future location of the target pedestrian
+            initX = xFilter.process(center[0])
+            initY = yFilter.process(center[1])
+            futureX, futureY = detector.futureXY(img, lmls, lmrs, (initX, initY), angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture)
+            # futureX = 768 - futureX
+            # futureY = 432 - futureY
 
             # collision prediction wrt botApproachSpeed
             # futureDeltaY = botApproachSpeed * timeToFuture  # predicted closeness of the pedestrian to the bot in the future
@@ -346,9 +439,17 @@ def main():
         #       + '--------------\n')
 
         cv2.imshow("img", img)
+        #time.sleep(0.2)
 
         if cv2.waitKey(1) == ord('q'):
             break
+
+    # data visualization
+    # df = pd.DataFrame()
+    # df['raw'] = collectedData
+    # df['filtered'] = filteredData
+    # df.plot()
+    # plt.show()
 
     cap.release()
     cv2.destroyAllWindows()
