@@ -223,7 +223,7 @@ class PoseDetector:
             return realAngle
 
     # implicit fuzzy classification implemented here
-    def futureXY(self, img, lmls, lmrs, init, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, draw=True):
+    def futureXY(self, img, lmls, lmrs, init, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, err, draw=True):
 
         if (angleOfApproach > 0) and (angleOfApproach < 90) and (centerXApproachSpeed > 0) and (centerYApproachSpeed < 0):
             futureX = init[0] + np.math.sqrt(
@@ -269,7 +269,7 @@ class PoseDetector:
                 cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
 
-        elif (((angleOfApproach > -10) and (angleOfApproach < 10)) or ((angleOfApproach > 170) and (angleOfApproach < 190))) and (centerXApproachSpeed > 0) and ((centerYApproachSpeed > -10) and (centerYApproachSpeed < 10)):
+        elif (((angleOfApproach > 0 - err) and (angleOfApproach < 0 + err)) or ((angleOfApproach > 180 - err) and (angleOfApproach < 180 + err))) and (centerXApproachSpeed > 0) and ((centerYApproachSpeed > 0 - err) and (centerYApproachSpeed < 0 + err)):
             futureX = init[0] + np.math.sqrt(
                 ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2)
             futureY = init[1]
@@ -279,7 +279,7 @@ class PoseDetector:
                 cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
 
-        elif (((angleOfApproach > -10) and (angleOfApproach < 10)) or ((angleOfApproach > 170) and (angleOfApproach < 190))) and (centerXApproachSpeed < 0) and ((centerYApproachSpeed > -10) and (centerYApproachSpeed < 10)):
+        elif (((angleOfApproach > 0 - err) and (angleOfApproach < 0 + err)) or ((angleOfApproach > 180 - err) and (angleOfApproach < 190 - err))) and (centerXApproachSpeed < 0) and ((centerYApproachSpeed > 0 - err) and (centerYApproachSpeed < 0 + err)):
             futureX = init[0] - np.math.sqrt(
                 ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2)
             futureY = init[1]
@@ -289,7 +289,7 @@ class PoseDetector:
                 cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
 
-        elif ((angleOfApproach > 80) and (angleOfApproach < 100)) and ((centerXApproachSpeed > -10) and (centerXApproachSpeed < 10)) and (centerYApproachSpeed < 0):
+        elif ((angleOfApproach > 90 - err) and (angleOfApproach < 90 + err)) and ((centerXApproachSpeed > 0 - err) and (centerXApproachSpeed < 0 + err)) and (centerYApproachSpeed > 0):
             futureX = init[0]
             futureY = init[1] - np.math.sqrt(
                 ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2)
@@ -299,7 +299,7 @@ class PoseDetector:
                 cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
 
-        elif ((angleOfApproach > 80) and (angleOfApproach < 100)) and ((centerXApproachSpeed > -10) and (centerXApproachSpeed < 10)) and (centerYApproachSpeed > 0):
+        elif ((angleOfApproach > 90 - err) and (angleOfApproach < 90 + err)) and ((centerXApproachSpeed > 0 - err) and (centerXApproachSpeed < 0 + err)) and (centerYApproachSpeed < 0):
             futureX = init[0]
             futureY = init[1] + np.math.sqrt(
                 ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2)
@@ -343,11 +343,12 @@ def main():
     futureX = 0
     futureY = 0
     timeToFuture = 1 # all collision predictions are made for these many time units into the future
-    threshold = 10 # collision threshold for futureDeltaY
+    futureErrorThresholds = 10
+    # threshold = 10 # collision threshold for futureDeltaY
 
     # past definitions
     currentFrame = 0
-    frameWindow = 3
+    frameWindow = 2
 
     # filter settings
     angleFilter = StreamingMovingAverage(10)
@@ -381,36 +382,29 @@ def main():
             # finding the difference between highest landmark and lowest landmark in pixels
             yLocations = []
             for lm in lmList:
-
                 yLocations.append(lm[2])
-
                 if (lm[0] == 12):
                     lmrs = lm
                 elif (lm[0] == 11):
                     lmls = lm
-
             deltaY = max(yLocations) - min(yLocations)
-            occupiedHeight = deltaY / 432
+            occupiedHeight = deltaY / 432 # indicator of pedestrian's apparent height ( in terms of percentage of Y axis occupied)
+
             xCenterDisplacement = center[0]
             yCenterDisplacement = center[1]
             centerXApproachSpeed = (xCenterDisplacement - lastXCenterDisplacement) * fps
             centerYApproachSpeed = (yCenterDisplacement - lastYCenterDisplacement) * fps
 
-            # relative bot approach speed indicator value
-            botApproachSpeed = (deltaY - lastDeltaY) * fps
-
             # angle of approach reporting currently accurate only between the range of 30 and 160 degrees
             angleOfApproach = detector.angleOfOrientation(lmls, lmrs)
-            # cv2.putText(img, '{0:.2f}'.format(angleOfApproach), (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
 
             # filtering, predicting & drawing the future location of the target pedestrian
             initX = xFilter.process(center[0])
             initY = yFilter.process(center[1])
-            futureX, futureY = detector.futureXY(img, lmls, lmrs, (initX, initY), angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture)
-            # futureX = 768 - futureX
-            # futureY = 432 - futureY
+            futureX, futureY = detector.futureXY(img, lmls, lmrs, (initX, initY), angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, futureErrorThresholds)
 
             # collision prediction wrt botApproachSpeed
+            # botApproachSpeed = (deltaY - lastDeltaY) * fps # relative bot approach speed indicator value taking target pedestrian's apparent height into account
             # futureDeltaY = botApproachSpeed * timeToFuture  # predicted closeness of the pedestrian to the bot in the future
             # if (futureDeltaY > threshold) \
             #         and ((futureX > bboxInfo['bbox'][0]) and (futureX < (bboxInfo['bbox'][0] + bboxInfo['bbox'][2])))\
@@ -444,16 +438,6 @@ def main():
         curTime = time.time()
         cv2.putText(img, '{0:.2f}'.format(fps), (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
         cv2.putText(img, '{0:.2f}'.format((1 / fps) * 1000), (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
-
-        # data output
-        # print('--------------\n' + 'FPS = {0:.2f}\n'.format(fps)
-        #       + 'yBigness (%) = {0:.2f}\n'.format(occupiedHeight)
-        #       + 'Displacement from center (px) = {0:.2f}\n'.format(xCenterDisplacement)
-        #       + 'Speed of center approach (px/s) = {0:.2f}\n'.format(centerXApproachSpeed)
-        #       + 'Angle of approach (px/s) = {0:.2f}\n\n'.format(angleOfApproach)
-        #       + 'Time to future (s) = {0:.2f}\n'.format(timeToFuture)
-        #       + 'Predicted future location (px, px) = {0:.2f}, '.format(futureX) + '{0:.2f} \n'.format(futureY)
-        #       + '--------------\n')
 
         cv2.imshow("img", img)
         #time.sleep(0.2)
