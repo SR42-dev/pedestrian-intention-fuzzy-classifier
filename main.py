@@ -357,11 +357,18 @@ def main():
 
     # data collection settings & initialization
     df = pd.DataFrame()
+    df.index.name = 'frameNumber'
+    windowSizes = []
+    errorThresholds = []
+    timesToFuture = []
     leftShoulderX = []
     leftShoulderY = []
     rightShoulderX = []
     rightShoulderY = []
     occupiedHeights = []
+    anglesOfApproach = []
+    XframeSpeeds = []
+    YFrameSpeeds = []
     predictedX = []
     predictedY = []
 
@@ -435,11 +442,17 @@ def main():
                 pass
 
             # data collection
+            windowSizes.append(frameWindow)
+            errorThresholds.append(futureErrorThresholds)
+            timesToFuture.append(timeToFuture)
             leftShoulderX.append(lmls[1])
             leftShoulderY.append(lmls[2])
             rightShoulderX.append(lmrs[1])
             rightShoulderY.append(lmrs[2])
             occupiedHeights.append(occupiedHeight)
+            anglesOfApproach.append(angleOfApproach)
+            XframeSpeeds.append(centerXApproachSpeed)
+            YFrameSpeeds.append(centerYApproachSpeed)
             predictedX.append(futureX)
             predictedY.append(futureY)
 
@@ -453,10 +466,16 @@ def main():
         #time.sleep(0.2)
 
     # editing & saving the dataframe in .csv format
+    df['windowSize'] = windowSizes
+    df['XYError'] = errorThresholds
+    df['timeToFuture'] = timesToFuture
     df['leftShoulderX'] = leftShoulderX
     df['leftShoulderY'] = leftShoulderY
     df['rightShoulderX'] = rightShoulderX
     df['rightShoulderY'] = rightShoulderY
+    df['angleOfApproach'] = anglesOfApproach
+    df['XFrameSpeed'] = XframeSpeeds
+    df['YFrameSpeed'] = YFrameSpeeds
     df['occupiedHeights'] = occupiedHeights
     df['predictedX'] = predictedX
     df['predictedY'] = predictedY
