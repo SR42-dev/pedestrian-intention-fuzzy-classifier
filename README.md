@@ -7,7 +7,8 @@ A research project repository containing algorithms to classify pedestrian obstr
     - Hardcode overlay and visualize 2D representation of 3D path [DONE]
     - Implement fuzzy logic [DONE]
     - Take the last nth (experiment) frame as last frame rather than immediately previous one [DONE]
-    - Record shoulder locations, predicted locations, apparent target height, past frame number from present, error thresholds
+    - Record shoulder locations, predicted locations, apparent target height, past frame number from present, error thresholds [DONE]
+    - Find accuracies for various radii of prediction [DONE]
     
     - Implement 1D kalman filter for all varying values
     - Extend algorithm to multiple pedestrians by multithreading

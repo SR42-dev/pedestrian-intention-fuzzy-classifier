@@ -337,6 +337,8 @@ def main():
     centerXApproachSpeed = 0
     centerYApproachSpeed = 0
     angleOfApproach = 0
+    lastFutureX = 0
+    lastFutureY = 0
     lastDeltaY = 0
 
     # future definitions
@@ -361,6 +363,8 @@ def main():
     windowSizes = []
     errorThresholds = []
     timesToFuture = []
+    currentCenterX = []
+    currentCenterY = []
     leftShoulderX = []
     leftShoulderY = []
     rightShoulderX = []
@@ -445,6 +449,8 @@ def main():
             windowSizes.append(frameWindow)
             errorThresholds.append(futureErrorThresholds)
             timesToFuture.append(timeToFuture)
+            currentCenterX.append(center[0])
+            currentCenterY.append(center[1])
             leftShoulderX.append(lmls[1])
             leftShoulderY.append(lmls[2])
             rightShoulderX.append(lmrs[1])
@@ -459,8 +465,14 @@ def main():
         # FPS calculation
         fps = 1 / (time.time() - curTime)
         curTime = time.time()
-        cv2.putText(img, '{0:.2f}'.format(fps), (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
-        cv2.putText(img, '{0:.2f}'.format((1 / fps) * 1000), (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
+        cv2.putText(img, '{0:.2f}'.format(fps), (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+        cv2.putText(img, '{0:.2f}'.format((1 / fps) * 1000), (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+
+        # scale
+        cv2.putText(img, '50px: ', (675, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (100, 255, 0), 1, cv2.LINE_AA)
+        cv2.line(img, (710, 17), (760, 17), (100, 255, 0), 1)
+        cv2.line(img, (710, 17), (710, 22), (100, 255, 0), 1)
+        cv2.line(img, (760, 17), (760, 22), (100, 255, 0), 1)
 
         cv2.imshow("img", img)
         #time.sleep(0.2)
@@ -469,6 +481,8 @@ def main():
     df['windowSize'] = windowSizes
     df['XYError'] = errorThresholds
     df['timeToFuture'] = timesToFuture
+    df['currentCenterX'] = currentCenterX
+    df['currentCenterY'] = currentCenterY
     df['leftShoulderX'] = leftShoulderX
     df['leftShoulderY'] = leftShoulderY
     df['rightShoulderX'] = rightShoulderX
