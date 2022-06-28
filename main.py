@@ -318,16 +318,18 @@ class PoseDetector:
 def main():
 
     pathOverlay = cv2.imread('resources/overlays/pathOverlayBlack.png')
-    cap = cv2.VideoCapture('resources/testVideos/test1.mp4')
+    cap = cv2.VideoCapture('resources/testVideos/test0.mp4')
     cap.set(3, 768)
     cap.set(4, 432)
 
     detector = PoseDetector()
 
+    # FPS initializations
     curTime = time.time()  # start time
     fps = 0
     frameNumber = 0
 
+    # general initializations
     lastXCenterDisplacement = 0
     lastYCenterDisplacement = 0
     occupiedHeight = 0
@@ -337,17 +339,22 @@ def main():
     angleOfApproach = 0
     lastDeltaY = 0
 
+    # future definitions
     futureX = 0
     futureY = 0
     timeToFuture = 1 # all collision predictions are made for these many time units into the future
     threshold = 10 # collision threshold for futureDeltaY
+
+    # past definitions
+    currentFrame = 0
+    frameWindow = 3
 
     # filter settings
     angleFilter = StreamingMovingAverage(10)
     xFilter = StreamingMovingAverage(10)
     yFilter = StreamingMovingAverage(10)
 
-    # data plot settings
+    # data plot initializations
     collectedData = []
     filteredData = []
 
@@ -394,12 +401,7 @@ def main():
 
             # angle of approach reporting currently accurate only between the range of 30 and 160 degrees
             angleOfApproach = detector.angleOfOrientation(lmls, lmrs)
-            cv2.putText(img, '{0:.2f}'.format(angleOfApproach), (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
-
-            # filtering angle data stream with moving averages
-            frameNumber += 1
-            #cv2.putText(img, '{0:d}'.format(frameNumber), (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
-            #angleOfApproach = angleFilter.process(angleOfApproach)
+            # cv2.putText(img, '{0:.2f}'.format(angleOfApproach), (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
 
             # filtering, predicting & drawing the future location of the target pedestrian
             initX = xFilter.process(center[0])
@@ -419,14 +421,29 @@ def main():
             cv2.circle(img, (lmls[1], lmls[2]), 5, (255, 255, 255), cv2.FILLED)
             cv2.circle(img, (lmrs[1], lmrs[2]), 5, (255, 255, 255), cv2.FILLED)
 
-            lastXCenterDisplacement = xCenterDisplacement  # displacement updation
-            lastYCenterDisplacement = yCenterDisplacement
-            lastDeltaY = deltaY
+            # displacement updation, will cause first n frames in window to be highly inaccurate
+            currentFrame += 1
+            frameNumber += 1
+            if (currentFrame == frameWindow) and (frameNumber > frameWindow):
+                lastXCenterDisplacement = xCenterDisplacement
+                lastYCenterDisplacement = yCenterDisplacement
+                lastDeltaY = deltaY
+                currentFrame = 0
+
+            elif (frameNumber < frameWindow):
+                lastXCenterDisplacement = xCenterDisplacement
+                lastYCenterDisplacement = yCenterDisplacement
+                lastDeltaY = deltaY
+                currentFrame = 0
+
+            else:
+                pass
 
         # FPS calculation
         fps = 1 / (time.time() - curTime)
         curTime = time.time()
         cv2.putText(img, '{0:.2f}'.format(fps), (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
+        cv2.putText(img, '{0:.2f}'.format((1 / fps) * 1000), (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
 
         # data output
         # print('--------------\n' + 'FPS = {0:.2f}\n'.format(fps)
