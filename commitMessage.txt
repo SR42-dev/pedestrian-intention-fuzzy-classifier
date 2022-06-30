@@ -1,0 +1,9 @@
+Week 3 completed.
+Commit messages henceforth will occasionally have lengthier descriptions when a larger number of changes are made.
+
+singlePedestrianPathPrediction2.0.py now predicts the pedestrian path using fuzzy logic state classification.
+This is as opposed to the original plan of using the same system for threat classification.
+All testing and data collection has been automated.
+Filters have only been implemented afere one stage of processing for all data points where they are applicable.
+
+Kalman filter and multithreading pending on the software front.
