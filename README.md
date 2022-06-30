@@ -27,14 +27,14 @@ A research project repository containing algorithms to classify pedestrian obstr
 - git status
 - git add --all
 - git status
-- <Edit commitMessage.txt appropriately>
+- Edit commitMessage.txt appropriately
 - git commit -F commitMessage.txt
 - git status
 - git log --all --decorate --oneline --graph
 
 ### Jupyter notebook cheat sheet :
 - jupyter notebook <relative path name of the notebook>
-- jupyter notebook --notebook-dir="<absolute path in case of directory switch>"
+- jupyter notebook --notebook-dir="absolute path in case of directory switch"
 
 
 
