@@ -32,6 +32,55 @@ def look_at(eye: np.array, target: np.array):
 
 
 # filter(s)
+class KalmanAngular:
+
+    def __init__(self):
+        # n: number of iterations to run the filter for
+        # dt: time interval for updates
+        # v: velocity of robot
+        # p_v: uncertainty in velocity
+        # q: process noise variance (uncertainty in the system's dynamic model)
+        # r: measurement uncertainty
+        # Z: list of position estimates derived from sensor measurements
+        self.x = 0
+        self.p = 0.5
+        self.n = 10 # must be smaller then windowSize
+        self.Z = []
+        self.v = 0 # feed angular velocity here later
+        self.p_v = 0 # feed uncertainty in angular velocity here later
+        self.q = 0 # insert dynamic model uncertainty here later
+        self.dt = 0.05 # feed latency for this parameter later
+        self.r = 0.5 # feed measurement uncertainty here later
+        self.windowSize = 20
+
+    def predict(self):
+        # Prediction
+        self.x = self.x + self.dt * self.v  # State Transition Equation (Dynamic Model or Prediction Model)
+        self.p = self.p + (self.dt ** 2 * self.p_v) + self.q  # Predicted Covariance equation
+
+    def measure(self, z):
+        if len(self.Z) < self.windowSize:
+            self.Z.append(z)
+        else:
+            self.Z.pop()
+            self.Z.append(z)
+        return np.mean(self.Z)
+
+    def update(self, z):
+        k = self.p / (self.p + self.r)  # Kalman Gain
+        self.x = self.x + k * (z - self.x)  # State Update
+        self.p = (1 - k) * self.p  # Covariance Update
+
+    def process(self, i):
+
+        for j in range(1, self.n):
+            self.predict()
+            z = self.measure(i)
+            self.update(z)
+
+        return self.x
+
+
 class StreamingMovingAverage:
 
     def __init__(self, window_size):
@@ -56,7 +105,7 @@ class PoseDetector:
 
     def __init__(self, mode=False, smooth=True, detectionCon=0.5, trackCon=0.5,
                  xFilter=StreamingMovingAverage(10), yFilter=StreamingMovingAverage(10),
-                 angleFilter=StreamingMovingAverage(10)):
+                 angleFilter=KalmanAngular()):
 
         """
         :param mode: In static mode, detection is done on each image: slower
