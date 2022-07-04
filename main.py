@@ -34,6 +34,15 @@ def look_at(eye: np.array, target: np.array):
 # filter(s)
 class KalmanAngular:
 
+    '''
+    Next immediate optimizations :
+        - Update state transition equation to reflect angular velocity
+        - Update covariance equation
+        - Update Kalman gain equation
+        - Update state update and covariance update equations
+        - Parameterize the KalmanAngular class attributes
+    '''
+
     def __init__(self):
         # n: number of iterations to run the filter for
         # dt: time interval for updates
