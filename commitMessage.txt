@@ -1,9 +1,12 @@
-Week 3 completed.
-Commit messages henceforth will occasionally have lengthier descriptions when a larger number of changes are made.
+Week 4 starting now ...
 
-singlePedestrianPathPrediction2.0.py now predicts the pedestrian path using fuzzy logic state classification.
-This is as opposed to the original plan of using the same system for threat classification.
-All testing and data collection has been automated.
-Filters have only been implemented afere one stage of processing for all data points where they are applicable.
+- Updated README.md
+- Updated pedestrianDetection_projectTimeline.docx
+- Will branch out from main now to optimize work done so far
+- Extending capabilities
+- Commencing paper writing
 
-Kalman filter and multithreading pending on the software front.
+Week 3 highlights :
+
+- Testing complete for stationary robot, single moving target case
+- Model accuracy visualized at 76.88% on average
