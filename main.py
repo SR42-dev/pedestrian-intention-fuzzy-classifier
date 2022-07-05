@@ -112,9 +112,7 @@ class PoseDetector:
     Estimates Pose points of a human body using the mediapipe library.
     """
 
-    def __init__(self, mode=False, smooth=True, detectionCon=0.5, trackCon=0.5,
-                 xFilter=StreamingMovingAverage(10), yFilter=StreamingMovingAverage(10),
-                 angleFilter=KalmanAngular()):
+    def __init__(self, mode=False, smooth=True, detectionCon=0.5, trackCon=0.5):
 
         """
         :param mode: In static mode, detection is done on each image: slower
@@ -128,9 +126,6 @@ class PoseDetector:
         self.smooth = smooth
         self.detectionCon = detectionCon
         self.trackCon = trackCon
-        self.xFilter = xFilter
-        self.yFilter = yFilter
-        self.angleFilter = angleFilter
 
         self.mpDraw = mp.solutions.drawing_utils
         self.mpPose = mp.solutions.pose
@@ -138,6 +133,12 @@ class PoseDetector:
                                      smooth_landmarks=self.smooth,
                                      min_detection_confidence=self.detectionCon,
                                      min_tracking_confidence=self.trackCon)
+
+    def filterSettings(self, xFilter, yFilter, angleFilter):
+
+        self.xFilter = xFilter
+        self.yFilter = yFilter
+        self.angleFilter = angleFilter
 
     def findPose(self, img, draw=True):
 
@@ -399,8 +400,6 @@ def main(path):
     cap.set(3, 768)
     cap.set(4, 432)
 
-    detector = PoseDetector()
-
     # FPS initializations
     curTime = time.time() # start time
     lastTime = curTime
@@ -445,6 +444,12 @@ def main(path):
     YFrameSpeeds = []
     predictedX = []
     predictedY = []
+
+    # pose detector settings
+    detector = PoseDetector()
+    detector.filterSettings(xFilter=StreamingMovingAverage(10),
+                            yFilter=StreamingMovingAverage(10),
+                            angleFilter=KalmanAngular())
 
     while True:
 
