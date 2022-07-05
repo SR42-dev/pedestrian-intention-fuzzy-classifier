@@ -593,7 +593,7 @@ def main(path):
 
 
 if __name__ == "__main__":
-    directory = 'resources\stockTestFootage'
+    directory = 'resources/stockTestFootage'
     for filename in os.listdir(directory):
         f = os.path.join(directory, filename)
         if os.path.isfile(f):
