@@ -2,6 +2,7 @@
 A research project repository containing algorithms to classify pedestrian obstruction probabilities into fuzzy logic states using 2D cameras 
 
 ### Current week : 4
+#### Deadline : 08-July-2022
 
 ### Next short-term goal(s) :
 
