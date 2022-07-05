@@ -36,9 +36,6 @@ class KalmanAngular:
 
     '''
     Next immediate optimizations :
-        - Update state transition equation to reflect angular velocity
-        - Update covariance equation
-        - Update Kalman gain equation
         - Update state update and covariance update equations
         - Parameterize the KalmanAngular class attributes
     '''
@@ -46,39 +43,46 @@ class KalmanAngular:
     def __init__(self):
         # n: number of iterations to run the filter for
         # dt: time interval for updates
-        # v: velocity of robot
-        # p_v: uncertainty in velocity
+        # v: angular velocity of obstruction
+        # p_v: uncertainty in angular velocity
         # q: process noise variance (uncertainty in the system's dynamic model)
         # r: measurement uncertainty
         # Z: list of position estimates derived from sensor measurements
+
+        # initializing with static values due to very low variance in testing
         self.x = 0
         self.p = 0.5
-        self.n = 10 # must be smaller then windowSize
+        self.windowSize = 10
+        self.n = 5 # must be smaller than windowSize
         self.Z = []
         self.v = 0 # feed angular velocity here later
-        self.p_v = 0 # feed uncertainty in angular velocity here later
-        self.q = 0 # insert dynamic model uncertainty here later
-        self.dt = 0.05 # feed latency for this parameter later
+        self.p_v = 0 # angular velocity uncertainty assumed to be negligible due to camera being the sole sensor
+        self.q = 0 # assuming dynamic model uncertainty to be 0 (perfect system)
+        self.dt = 0.05 # average latency is 50ms
         self.r = 0.5 # feed measurement uncertainty here later
-        self.windowSize = 20
+
+        # self processing attributes
+        self.curTime = time.time()
 
     def predict(self):
-        # Prediction
-        self.x = self.x + self.dt * self.v  # State Transition Equation (Dynamic Model or Prediction Model)
-        self.p = self.p + (self.dt ** 2 * self.p_v) + self.q  # Predicted Covariance equation
+        # prediction
+        self.x = self.x + self.dt * self.v  # state transition equation
+        self.p = self.p + (self.dt ** 2 * self.p_v) + self.q  # predicted covariance equation
 
     def measure(self, z):
+
         if len(self.Z) < self.windowSize:
             self.Z.append(z)
         else:
-            self.Z.pop()
+            self.Z.pop(0)
             self.Z.append(z)
+
         return np.mean(self.Z)
 
     def update(self, z):
-        k = self.p / (self.p + self.r)  # Kalman Gain
-        self.x = self.x + k * (z - self.x)  # State Update
-        self.p = (1 - k) * self.p  # Covariance Update
+        k = self.p / (self.p + self.r)  # Kalman gain
+        self.x = self.x + k * (z - self.x)  # state update
+        self.p = (1 - k) * self.p  # covariance update
 
     def process(self, i):
 
