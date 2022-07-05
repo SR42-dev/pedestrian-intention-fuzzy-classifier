@@ -1,12 +1,1 @@
-Week 4 starting now ...
-
-- Updated README.md
-- Updated pedestrianDetection_projectTimeline.docx
-- Will branch out from main now to optimize work done so far
-- Extending capabilities
-- Commencing paper writing
-
-Week 3 highlights :
-
-- Testing complete for stationary robot, single moving target case
-- Model accuracy visualized at 76.88% on average
+Added Kalman filtering for angle data from quaternion. Prediction accuracy increased by ~1.1%.

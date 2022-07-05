@@ -32,6 +32,63 @@ def look_at(eye: np.array, target: np.array):
 
 
 # filter(s)
+class KalmanAngular:
+
+    def __init__(self, windowSize=10, n=5):
+        # x: predicted angle
+        # p: predicted angle uncertainty
+        # n: number of iterations to run the filter for
+        # dt: time interval for updates
+        # v: angular velocity of obstruction
+        # p_v: uncertainty in angular velocity
+        # q: process noise variance (uncertainty in the system's dynamic model)
+        # r: measurement uncertainty
+        # Z: list of position estimates derived from sensor measurements
+
+        # initializing with static values due to very low variance in testing
+        self.x = 0
+        self.p = 0.5
+        self.windowSize = windowSize
+        self.n = n # must be smaller than windowSize
+        self.Z = []
+
+        self.q = 0 # assuming dynamic model uncertainty to be 0 (perfect system)
+        self.dt = 0.05 # average latency is 50ms
+        self.r = 0.5 # angle measurement uncertainty (determine experimentally based on test case)
+
+        # self processing attributes
+        self.curTime = time.time()
+
+    def predict(self):
+        # prediction assuming a dynamic model
+        self.x = self.x   # state transition equation
+        self.p = self.p + self.q  # predicted covariance equation
+
+    def measure(self, z):
+
+        if len(self.Z) < self.windowSize:
+            self.Z.append(z)
+        else:
+            self.Z.pop(0)
+            self.Z.append(z)
+
+        return np.mean(self.Z)
+
+    def update(self, z):
+        k = self.p / (self.p + self.r)  # Kalman gain
+        self.x = self.x + k * (z - self.x)  # state update
+        self.p = (1 - k) * self.p  # covariance update
+
+    def process(self, i):
+
+        for j in range(1, self.n):
+            self.predict()
+            z = self.measure(i)
+            self.update(z)
+
+        return self.x
+
+
 class StreamingMovingAverage:
 
     def __init__(self, window_size):
@@ -54,9 +111,7 @@ class PoseDetector:
     Estimates Pose points of a human body using the mediapipe library.
     """
 
-    def __init__(self, mode=False, smooth=True, detectionCon=0.5, trackCon=0.5,
-                 xFilter=StreamingMovingAverage(10), yFilter=StreamingMovingAverage(10),
-                 angleFilter=StreamingMovingAverage(10)):
+    def __init__(self, mode=False, smooth=True, detectionCon=0.5, trackCon=0.5):
 
         """
         :param mode: In static mode, detection is done on each image: slower
@@ -70,9 +125,6 @@ class PoseDetector:
         self.smooth = smooth
         self.detectionCon = detectionCon
         self.trackCon = trackCon
-        self.xFilter = xFilter
-        self.yFilter = yFilter
-        self.angleFilter = angleFilter
 
         self.mpDraw = mp.solutions.drawing_utils
         self.mpPose = mp.solutions.pose
@@ -80,6 +132,12 @@ class PoseDetector:
                                      smooth_landmarks=self.smooth,
                                      min_detection_confidence=self.detectionCon,
                                      min_tracking_confidence=self.trackCon)
+
+    def filterSettings(self, xFilter, yFilter, angleFilter):
+
+        self.xFilter = xFilter
+        self.yFilter = yFilter
+        self.angleFilter = angleFilter
 
     def findPose(self, img, draw=True):
 
@@ -330,6 +388,9 @@ class PoseDetector:
             futureY = self.yFilter.process(init[1])
 
             if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.putText(img, 'CASE 9', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
 
         return futureX, futureY
@@ -340,8 +401,6 @@ def main(path):
     cap = cv2.VideoCapture(path)
     cap.set(3, 768)
     cap.set(4, 432)
-
-    detector = PoseDetector()
 
     # FPS initializations
     curTime = time.time() # start time
@@ -361,8 +420,6 @@ def main(path):
     # future definitions
     futureX = 0
     futureY = 0
-    timeToFuture = 1 # all collision predictions are made for these many time units into the future
-    futureErrorThresholds = 10
     # threshold = 10 # collision threshold for futureDeltaY
 
     # past definitions
@@ -375,6 +432,8 @@ def main(path):
     windowSizes = []
     errorThresholds = []
     timesToFuture = []
+    times = []
+    frameRates = []
     currentCenterX = []
     currentCenterY = []
     leftShoulderX = []
@@ -387,6 +446,14 @@ def main(path):
     YFrameSpeeds = []
     predictedX = []
     predictedY = []
+
+    # pose detector settings and variables that visibly impact output
+    detector = PoseDetector()
+    detector.filterSettings(xFilter=StreamingMovingAverage(10),
+                            yFilter=StreamingMovingAverage(10),
+                            angleFilter=KalmanAngular(windowSize=25, n=10))
+    timeToFuture = 1  # all collision predictions are made for these many seconds into the future
+    futureErrorThresholds = 10
 
     while True:
 
@@ -464,6 +531,8 @@ def main(path):
             windowSizes.append(frameWindow)
             errorThresholds.append(futureErrorThresholds)
             timesToFuture.append(timeToFuture)
+            times.append(time.time())
+            frameRates.append(fps)
             currentCenterX.append(center[0])
             currentCenterY.append(center[1])
             leftShoulderX.append(lmls[1])
@@ -502,6 +571,8 @@ def main(path):
     df['windowSize'] = windowSizes
     df['XYError'] = errorThresholds
     df['timeToFuture'] = timesToFuture
+    df['time'] = times
+    df['fps'] = frameRates
     df['currentCenterX'] = currentCenterX
     df['currentCenterY'] = currentCenterY
     df['leftShoulderX'] = leftShoulderX

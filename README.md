@@ -2,12 +2,13 @@
 A research project repository containing algorithms to classify pedestrian obstruction probabilities into fuzzy logic states using 2D cameras 
 
 ### Current week : 4
+#### Deadline : 08-July-2022
 
 ### Next short-term goal(s) :
 
 - Predict pedestrian positions on frame based on collected data and compare with reality (show the path of the camera and that of the pedestrian intersecting with IRL test video)
-    - Last window and future window implementation.
-    - Implement 1D kalman filter for all varying values.
+    - Last window and future window implementation [DONE]
+    - Implement 1D kalman filter for all varying values [IN PROGRESS]
     - Hardware implementation (if necessary) & recording of dynamic scenes.
     - Extend algorithm to multiple pedestrians by multithreading
     - Algorithm optimization    
