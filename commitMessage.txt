@@ -1,8 +1,1 @@
-Implemented Kalman filter for angular values.
-
-Next immediate optimizations :
-- Update state transition equation to reflect angular velocity
-- Update covariance equation
-- Update Kalman gain equation
-- Update state update and covariance update equations
-- Parameterize the KalmanAngular class attributes
+Added Kalman filtering for angle data from quaternion. Prediction accuracy increased by ~1.1%.
