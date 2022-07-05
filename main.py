@@ -34,13 +34,9 @@ def look_at(eye: np.array, target: np.array):
 # filter(s)
 class KalmanAngular:
 
-    '''
-    Next immediate optimizations :
-        - Update state update and covariance update equations
-        - Parameterize the KalmanAngular class attributes
-    '''
-
-    def __init__(self):
+    def __init__(self, windowSize=10, n=5):
+        # x: predicted angle
+        # p: predicted angle uncertainty
         # n: number of iterations to run the filter for
         # dt: time interval for updates
         # v: angular velocity of obstruction
@@ -52,22 +48,21 @@ class KalmanAngular:
         # initializing with static values due to very low variance in testing
         self.x = 0
         self.p = 0.5
-        self.windowSize = 10
-        self.n = 5 # must be smaller than windowSize
+        self.windowSize = windowSize
+        self.n = n # must be smaller than windowSize
         self.Z = []
-        self.v = 0 # feed angular velocity here later
-        self.p_v = 0 # angular velocity uncertainty assumed to be negligible due to camera being the sole sensor
+
         self.q = 0 # assuming dynamic model uncertainty to be 0 (perfect system)
         self.dt = 0.05 # average latency is 50ms
-        self.r = 0.5 # feed measurement uncertainty here later
+        self.r = 0.5 # angle measurement uncertainty (determine experimentally based on test case)
 
         # self processing attributes
         self.curTime = time.time()
 
     def predict(self):
-        # prediction
-        self.x = self.x + self.dt * self.v  # state transition equation
-        self.p = self.p + (self.dt ** 2 * self.p_v) + self.q  # predicted covariance equation
+        # prediction assuming a dynamic model
+        self.x = self.x   # state transition equation
+        self.p = self.p + self.q  # predicted covariance equation
 
     def measure(self, z):
 
@@ -393,6 +388,9 @@ class PoseDetector:
             futureY = self.yFilter.process(init[1])
 
             if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.putText(img, 'CASE 9', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
 
         return futureX, futureY
@@ -422,8 +420,6 @@ def main(path):
     # future definitions
     futureX = 0
     futureY = 0
-    timeToFuture = 1 # all collision predictions are made for these many time units into the future
-    futureErrorThresholds = 10
     # threshold = 10 # collision threshold for futureDeltaY
 
     # past definitions
@@ -436,6 +432,8 @@ def main(path):
     windowSizes = []
     errorThresholds = []
     timesToFuture = []
+    times = []
+    frameRates = []
     currentCenterX = []
     currentCenterY = []
     leftShoulderX = []
@@ -449,11 +447,13 @@ def main(path):
     predictedX = []
     predictedY = []
 
-    # pose detector settings
+    # pose detector settings and variables that visibly impact output
     detector = PoseDetector()
     detector.filterSettings(xFilter=StreamingMovingAverage(10),
                             yFilter=StreamingMovingAverage(10),
-                            angleFilter=KalmanAngular())
+                            angleFilter=KalmanAngular(windowSize=25, n=10))
+    timeToFuture = 2.5  # all collision predictions are made for these many seconds into the future
+    futureErrorThresholds = 10
 
     while True:
 
@@ -531,6 +531,8 @@ def main(path):
             windowSizes.append(frameWindow)
             errorThresholds.append(futureErrorThresholds)
             timesToFuture.append(timeToFuture)
+            times.append(time.time())
+            frameRates.append(fps)
             currentCenterX.append(center[0])
             currentCenterY.append(center[1])
             leftShoulderX.append(lmls[1])
@@ -569,6 +571,8 @@ def main(path):
     df['windowSize'] = windowSizes
     df['XYError'] = errorThresholds
     df['timeToFuture'] = timesToFuture
+    df['time'] = times
+    df['fps'] = frameRates
     df['currentCenterX'] = currentCenterX
     df['currentCenterY'] = currentCenterY
     df['leftShoulderX'] = leftShoulderX
