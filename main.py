@@ -452,7 +452,7 @@ def main(path):
     detector.filterSettings(xFilter=StreamingMovingAverage(10),
                             yFilter=StreamingMovingAverage(10),
                             angleFilter=KalmanAngular(windowSize=25, n=10))
-    timeToFuture = 2.5  # all collision predictions are made for these many seconds into the future
+    timeToFuture = 1  # all collision predictions are made for these many seconds into the future
     futureErrorThresholds = 10
 
     while True:
