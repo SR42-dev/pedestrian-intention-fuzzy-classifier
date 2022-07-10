@@ -103,6 +103,13 @@ class StreamingMovingAverage:
             self.sum -= self.values.pop(0)
         return float(self.sum) / len(self.values)
 
+class noFilter:
+
+    def __init__(self):
+        pass
+
+    def process(self, value):
+        return value
 
 # pose detector class
 class PoseDetector:
@@ -593,7 +600,7 @@ def main(path):
 
 
 if __name__ == "__main__":
-    directory = 'resources/stockTestFootage'
+    directory = 'resources\stockTestFootage'
     for filename in os.listdir(directory):
         f = os.path.join(directory, filename)
         if os.path.isfile(f):
