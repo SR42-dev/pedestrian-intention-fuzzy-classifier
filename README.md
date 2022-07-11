@@ -8,14 +8,10 @@ A research project repository containing algorithms to classify pedestrian obstr
 
 - Predict pedestrian positions on frame based on collected data and compare with reality (show the path of the camera and that of the pedestrian intersecting with IRL test video)
     - Last window and future window implementation [DONE]
-    - Implement 1D kalman filter for all varying values [IN PROGRESS]
-    - Hardware implementation (if necessary) & recording of dynamic scenes.
-    - Extend algorithm to multiple pedestrians by multithreading
-    - Algorithm optimization    
-    - Paper writing initialization
+    - Implement 1D kalman filter for all varying values [DONE]
 
-- Figure out formulae to get collision probability from obtained variables.
-- Draw decision-making automata & fuzzy logic map for collision prediction.
+- Figure out formulae to get collision probability from obtained variables [DONE]
+- Draw decision-making automata & fuzzy logic map for collision prediction. [DONE]
 
 ## Cheat sheets :
 

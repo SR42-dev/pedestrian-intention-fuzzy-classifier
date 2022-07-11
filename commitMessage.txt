@@ -1,1 +1,10 @@
-Added Kalman filtering for angle data from quaternion. Prediction accuracy increased by ~1.1%.
+Week 4 complete. Last stretch pending.
+
+Stuff to complete in week 5 before final presentation :
+- View visualizing path of the pedestrian and the path of the robot (show intersection)
+- Record scenes.
+
+Notes to take the project further :
+-Hardware implementation (if necessary) & recording of dynamic scenes.
+- Extend algorithm to multiple pedestrians by multithreading
+- Paper writing initialization

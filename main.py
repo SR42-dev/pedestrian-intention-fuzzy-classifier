@@ -457,11 +457,11 @@ def main(path):
     # pose detector settings and variables that visibly impact output
     detector = PoseDetector()
     # filter options : StreamingMovingAverage(10), Kalman(windowSize=20, n=10), noFilter()
-    detector.filterSettings(xFilter=StreamingMovingAverage(5),
-                            yFilter=StreamingMovingAverage(5),
+    detector.filterSettings(xFilter=StreamingMovingAverage(10),
+                            yFilter=StreamingMovingAverage(10),
                             angleFilter=Kalman(windowSize=25, n=10))
     timeToFuture = 1 # all collision predictions are made for these many seconds into the future
-    futureErrorThresholds = 20
+    futureErrorThresholds = 10
 
     while True:
 
@@ -601,7 +601,7 @@ def main(path):
 
 
 if __name__ == "__main__":
-    directory = 'resources/stockTestFootage'
+    directory = 'resources\stockTestFootage'
     for filename in os.listdir(directory):
         f = os.path.join(directory, filename)
         if os.path.isfile(f):

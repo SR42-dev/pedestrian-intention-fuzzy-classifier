@@ -32,7 +32,7 @@ def look_at(eye: np.array, target: np.array):
 
 
 # filter(s)
-class KalmanAngular:
+class Kalman:
 
     def __init__(self, windowSize=10, n=5):
         # x: predicted angle
@@ -103,6 +103,13 @@ class StreamingMovingAverage:
             self.sum -= self.values.pop(0)
         return float(self.sum) / len(self.values)
 
+class noFilter:
+
+    def __init__(self):
+        pass
+
+    def process(self, value):
+        return value
 
 # pose detector class
 class PoseDetector:
@@ -449,11 +456,12 @@ def main(path):
 
     # pose detector settings and variables that visibly impact output
     detector = PoseDetector()
-    detector.filterSettings(xFilter=StreamingMovingAverage(10),
-                            yFilter=StreamingMovingAverage(10),
-                            angleFilter=KalmanAngular(windowSize=25, n=10))
-    timeToFuture = 1  # all collision predictions are made for these many seconds into the future
-    futureErrorThresholds = 10
+    # filter options : StreamingMovingAverage(10), Kalman(windowSize=20, n=10), noFilter()
+    detector.filterSettings(xFilter=StreamingMovingAverage(5),
+                            yFilter=StreamingMovingAverage(5),
+                            angleFilter=Kalman(windowSize=25, n=10))
+    timeToFuture = 1 # all collision predictions are made for these many seconds into the future
+    futureErrorThresholds = 20
 
     while True:
 
