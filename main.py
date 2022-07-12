@@ -433,27 +433,6 @@ def main(path):
     currentFrame = 0
     frameWindow = 4
 
-    # data collection settings & initialization
-    df = pd.DataFrame()
-    df.index.name = 'frameNumber'
-    windowSizes = []
-    errorThresholds = []
-    timesToFuture = []
-    times = []
-    frameRates = []
-    currentCenterX = []
-    currentCenterY = []
-    leftShoulderX = []
-    leftShoulderY = []
-    rightShoulderX = []
-    rightShoulderY = []
-    occupiedHeights = []
-    anglesOfApproach = []
-    XframeSpeeds = []
-    YFrameSpeeds = []
-    predictedX = []
-    predictedY = []
-
     # pose detector settings and variables that visibly impact output
     detector = PoseDetector()
     # filter options : StreamingMovingAverage(10), Kalman(windowSize=20, n=10), noFilter()
@@ -502,12 +481,6 @@ def main(path):
             centerXApproachSpeed = (center[0] - lastXCenter) / (time.time() - lastTime)
             centerYApproachSpeed = (center[1] - lastYCenter) / (time.time() - lastTime)
 
-            # displacementMagnitude = np.math.sqrt(((center[0] - lastXCenter) ** 2) + ((center[1] - lastYCenter) ** 2)) # euclidean distance
-            # velocityMagnitude = displacementMagnitude * (time.time() - lastTime)
-            # velocityDirection = np.array([(center[0] - lastXCenter) / displacementMagnitude, (center[1] - lastYCenter) / displacementMagnitude])
-            # print(velocityMagnitude)
-            # print(velocityDirection)
-
             # angle of approach reporting currently accurate only between the range of 30 and 160 degrees
             angleOfApproach = detector.angleOfOrientation(lmls, lmrs)
 
@@ -549,25 +522,6 @@ def main(path):
             else:
                 pass
 
-            # data collection
-            windowSizes.append(frameWindow)
-            errorThresholds.append(futureErrorThresholds)
-            timesToFuture.append(timeToFuture)
-            times.append(time.time())
-            frameRates.append(fps)
-            currentCenterX.append(center[0])
-            currentCenterY.append(center[1])
-            leftShoulderX.append(lmls[1])
-            leftShoulderY.append(lmls[2])
-            rightShoulderX.append(lmrs[1])
-            rightShoulderY.append(lmrs[2])
-            occupiedHeights.append(occupiedHeight)
-            anglesOfApproach.append(angleOfApproach)
-            XframeSpeeds.append(centerXApproachSpeed)
-            YFrameSpeeds.append(centerYApproachSpeed)
-            predictedX.append(futureX)
-            predictedY.append(futureY)
-
         # delay & display data on overlay
         #time.sleep(0.1)
         cv2.putText(img, '{0:.2f}'.format(angleOfApproach), (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1,cv2.LINE_AA)
@@ -588,26 +542,6 @@ def main(path):
         cv2.putText(img, str(path), (300, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
 
         cv2.imshow("img", img)
-
-    # editing & saving the dataframe in .csv format
-    df['windowSize'] = windowSizes
-    df['XYError'] = errorThresholds
-    df['timeToFuture'] = timesToFuture
-    df['time'] = times
-    df['fps'] = frameRates
-    df['currentCenterX'] = currentCenterX
-    df['currentCenterY'] = currentCenterY
-    df['leftShoulderX'] = leftShoulderX
-    df['leftShoulderY'] = leftShoulderY
-    df['rightShoulderX'] = rightShoulderX
-    df['rightShoulderY'] = rightShoulderY
-    df['angleOfApproach'] = anglesOfApproach
-    df['XFrameSpeed'] = XframeSpeeds
-    df['YFrameSpeed'] = YFrameSpeeds
-    df['occupiedHeights'] = occupiedHeights
-    df['predictedX'] = predictedX
-    df['predictedY'] = predictedY
-    df.to_csv('testData/data' + str(path)[-5:-4] + '.csv')
 
     # releasing & destroying windows
     cap.release()
