@@ -574,7 +574,7 @@ def main(path):
         cv2.imshow("img", img)
 
         if (cv2.waitKey(1) == ord('q')) or (not success):
-            cv2.imwrite('resources/snapshot.png', img)
+            # cv2.imwrite('resources/snapshot.png', img)
             break
 
     # releasing & destroying windows
