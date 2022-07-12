@@ -404,6 +404,7 @@ class PoseDetector:
 
 def main(path):
 
+    pathOverlay = cv2.imread('resources/overlays/pathOverlayBlack.png')
     cap = cv2.VideoCapture(path)
     cap.set(3, 768)
     cap.set(4, 432)
@@ -435,12 +436,12 @@ def main(path):
     # pose detector settings and variables that visibly impact output
     detector = PoseDetector()
     # filter options : StreamingMovingAverage(10), Kalman(windowSize=20, n=10), noFilter()
-    detector.filterSettings(xFilter=StreamingMovingAverage(10),
-                            yFilter=StreamingMovingAverage(10),
+    detector.filterSettings(xFilter=StreamingMovingAverage(5),
+                            yFilter=StreamingMovingAverage(5),
                             angleFilter=Kalman(windowSize=25, n=10))
     timeToFuture = 1 # all collision predictions are made for these many seconds into the future
     futureErrorThresholds = 10
-    drawState = False
+    drawState = True
 
     while True:
 
@@ -453,6 +454,10 @@ def main(path):
         img = cv2.flip(img, 1)
 
         img = detector.findPose(img, draw=drawState)
+
+        # resizing & adding path overlay
+        pathOverlay = cv2.resize(pathOverlay, (768, 432))
+        img = cv2.addWeighted(img,0.7,pathOverlay,0.3,0)
 
         lmList, bboxInfo = detector.findPosition(img, draw=False, bboxWithHands=False)
 
@@ -489,10 +494,28 @@ def main(path):
             y1 = lmls[2] + oShiftY
             x2 = lmrs[1] + oShiftX
             y2 = lmrs[2] + oShiftY
-            cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
-            cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (255, 255, 255), 2)
-            cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (255, 255, 255), 2)
-            cv2.line(img, (int(x1), int(y1)), (int(x2), int(y2)), (255, 255, 255), 2)
+
+            # conditions for collision prediction
+            cv2.putText(img, '{0:.2f}'.format(occupiedHeight), (10, 115), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0),1, cv2.LINE_AA)
+            cv2.putText(img, '{0:.2f}'.format(angleOfApproach), (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+
+            # green zone
+            if occupiedHeight < 0.5 :
+                cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,128,0), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,128,0), 2)
+
+            # yellow zone
+            elif occupiedHeight > 0.5 and occupiedHeight < 1 :
+                cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,255,255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,255,255), 2)
+
+            # red zone
+            if occupiedHeight > 1 :
+                cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,0,255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,0,255), 2)
 
             # highlighting shoulder points
             cv2.circle(img, (lmls[1], lmls[2]), 5, (255, 255, 255), cv2.FILLED)
@@ -519,7 +542,6 @@ def main(path):
 
         # delay & display data on overlay
         #time.sleep(0.1)
-        cv2.putText(img, '{0:.2f}'.format(angleOfApproach), (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1,cv2.LINE_AA)
 
         # FPS calculation
         fps = 1 / (time.time() - curTime)
