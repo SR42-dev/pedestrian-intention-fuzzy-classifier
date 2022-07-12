@@ -462,6 +462,7 @@ def main(path):
                             angleFilter=Kalman(windowSize=25, n=10))
     timeToFuture = 1 # all collision predictions are made for these many seconds into the future
     futureErrorThresholds = 10
+    drawState = False
 
     while True:
 
@@ -473,7 +474,7 @@ def main(path):
         img = cv2.resize(img, (768, 432))
         img = cv2.flip(img, 1)
 
-        img = detector.findPose(img)
+        img = detector.findPose(img, draw=drawState)
 
         # resizing & adding path overlay
         pathOverlay = cv2.resize(pathOverlay, (768, 432))
@@ -485,7 +486,7 @@ def main(path):
 
             # finding the center of the target pose
             center = bboxInfo["center"]
-            cv2.circle(img, center, 5, (255, 0, 255), cv2.FILLED)
+            # cv2.circle(img, center, 5, (255, 0, 255), cv2.FILLED)
 
             # finding the difference between highest landmark and lowest landmark in pixels
             yLocations = []
@@ -511,8 +512,21 @@ def main(path):
             angleOfApproach = detector.angleOfOrientation(lmls, lmrs)
 
             # filtering, predicting & drawing the future location of the target pedestrian
-            futureX, futureY = detector.futureXY(img, lmls, lmrs, center, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, futureErrorThresholds)
+            futureX, futureY = detector.futureXY(img, lmls, lmrs, center, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, futureErrorThresholds, draw=drawState)
 
+            # path generation
+            oShiftX = futureX - ((lmls[1] + lmrs[1]) / 2)
+            oShiftY = futureY - ((lmls[2] + lmrs[2]) / 2)
+            x1 = lmls[1] + oShiftX
+            y1 = lmls[2] + oShiftY
+            x2 = lmrs[1] + oShiftX
+            y2 = lmrs[2] + oShiftY
+            cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
+            cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (255, 255, 255), 2)
+            cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (255, 255, 255), 2)
+            cv2.line(img, (int(x1), int(y1)), (int(x2), int(y2)), (255, 255, 255), 2)
+
+            # highlighting shoulder points
             cv2.circle(img, (lmls[1], lmls[2]), 5, (255, 255, 255), cv2.FILLED)
             cv2.circle(img, (lmrs[1], lmrs[2]), 5, (255, 255, 255), cv2.FILLED)
 
