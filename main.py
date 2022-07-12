@@ -404,7 +404,6 @@ class PoseDetector:
 
 def main(path):
 
-    pathOverlay = cv2.imread('resources/overlays/pathOverlayBlack.png')
     cap = cv2.VideoCapture(path)
     cap.set(3, 768)
     cap.set(4, 432)
@@ -454,10 +453,6 @@ def main(path):
         img = cv2.flip(img, 1)
 
         img = detector.findPose(img, draw=drawState)
-
-        # resizing & adding path overlay
-        pathOverlay = cv2.resize(pathOverlay, (768, 432))
-        img = cv2.addWeighted(img,0.7,pathOverlay,0.3,0)
 
         lmList, bboxInfo = detector.findPosition(img, draw=False, bboxWithHands=False)
 
