@@ -436,19 +436,18 @@ def main(path):
     # pose detector settings and variables that visibly impact output
     detector = PoseDetector()
     # filter options : StreamingMovingAverage(10), Kalman(windowSize=20, n=10), noFilter()
-    detector.filterSettings(xFilter=StreamingMovingAverage(5),
-                            yFilter=StreamingMovingAverage(5),
+    detector.filterSettings(xFilter=StreamingMovingAverage(20),
+                            yFilter=StreamingMovingAverage(20),
                             angleFilter=Kalman(windowSize=25, n=10))
-    timeToFuture = 1 # all collision predictions are made for these many seconds into the future
+    timeToFuture = 100 # all collision predictions are made for these many seconds into the future
     futureErrorThresholds = 10
     drawState = True
+
+    #pathHistory = []
 
     while True:
 
         success, img = cap.read()
-
-        if (cv2.waitKey(1) == ord('q')) or (not success):
-            break
 
         img = cv2.resize(img, (768, 432))
         img = cv2.flip(img, 1)
@@ -458,6 +457,11 @@ def main(path):
         # resizing & adding path overlay
         pathOverlay = cv2.resize(pathOverlay, (768, 432))
         img = cv2.addWeighted(img,0.7,pathOverlay,0.3,0)
+
+        # path overlay (narrow)
+        cv2.line(img, (150, 432), (360, 200), (255, 255, 255), 2)
+        cv2.line(img, (618, 432), (400, 200), (255, 255, 255), 2)
+        cv2.line(img, (360, 200), (400, 200), (255, 255, 255), 2)
 
         lmList, bboxInfo = detector.findPosition(img, draw=False, bboxWithHands=False)
 
@@ -496,26 +500,35 @@ def main(path):
             y2 = lmrs[2] + oShiftY
 
             # conditions for collision prediction
-            cv2.putText(img, '{0:.2f}'.format(occupiedHeight), (10, 115), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0),1, cv2.LINE_AA)
-            cv2.putText(img, '{0:.2f}'.format(angleOfApproach), (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+            #cv2.putText(img, '{0:.2f}'.format(occupiedHeight), (10, 115), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0),1, cv2.LINE_AA)
+            #cv2.putText(img, '{0:.2f}'.format(angleOfApproach), (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
 
             # green zone
             if occupiedHeight < 0.5 :
                 cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,128,0), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,128,0), 2)
+                #pathHistory.append([x1, y1, (0, 128, 0)])
+                #pathHistory.append([x2, y2, (0, 128, 0)])
 
             # yellow zone
             elif occupiedHeight > 0.5 and occupiedHeight < 1 :
                 cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,255,255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,255,255), 2)
+                #pathHistory.append([x1, y1, (0,255,255)])
+                #pathHistory.append([x2, y2, (0,255,255)])
 
             # red zone
             if occupiedHeight > 1 :
                 cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,0,255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,0,255), 2)
+                #pathHistory.append([x1, y1, (0, 0, 255)])
+                #pathHistory.append([x2, y2, (0, 0, 255)])
+
+            #for i in pathHistory:
+                #cv2.circle(img, (int(i[0]), int(i[1])), 3, i[2], cv2.FILLED)
 
             # highlighting shoulder points
             cv2.circle(img, (lmls[1], lmls[2]), 5, (255, 255, 255), cv2.FILLED)
@@ -541,7 +554,7 @@ def main(path):
                 pass
 
         # delay & display data on overlay
-        #time.sleep(0.1)
+        # time.sleep(0.2)
 
         # FPS calculation
         fps = 1 / (time.time() - curTime)
@@ -560,13 +573,17 @@ def main(path):
 
         cv2.imshow("img", img)
 
+        if (cv2.waitKey(1) == ord('q')) or (not success):
+            cv2.imwrite('resources/snapshot.png', img)
+            break
+
     # releasing & destroying windows
     cap.release()
     cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
-    directory = 'resources\stockTestFootage'
+    directory = 'resources\recordedTestFootage'
     for filename in os.listdir(directory):
         f = os.path.join(directory, filename)
         if os.path.isfile(f):
