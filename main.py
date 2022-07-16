@@ -5,7 +5,13 @@ import time
 import numpy as np
 import pandas as pd
 import mediapipe as mp
+import matplotlib.path as mplPath
 
+# function to check if a point is present within a defined quadrilateral
+def pointInQuad(x, y, x1, y1, x2, y2, x3, y3, x4, y4):
+    polygon = mplPath.Path(np.array([[x1, y1], [x2, y2], [x3, y3], [x4, y4]]))
+    point = (x, y)
+    return polygon.contains_point(point)
 
 # rotation matrix helper functions
 def vec_length(v: np.array):
@@ -439,7 +445,7 @@ def main(path):
     detector.filterSettings(xFilter=StreamingMovingAverage(20),
                             yFilter=StreamingMovingAverage(20),
                             angleFilter=Kalman(windowSize=25, n=10))
-    timeToFuture = 100 # all collision predictions are made for these many seconds into the future
+    timeToFuture = 1 # all collision predictions are made for these many seconds into the future
     futureErrorThresholds = 10
     drawState = True
 
@@ -508,28 +514,43 @@ def main(path):
                 cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,128,0), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,128,0), 2)
+
+                # area denoting robot's future location on overlay
+                cv2.line(img, (270, 300), (495, 300), (0,128,0), 2)
+                cv2.line(img, (315, 250), (448, 250), (0,128,0), 2)
+
                 #pathHistory.append([x1, y1, (0, 128, 0)])
                 #pathHistory.append([x2, y2, (0, 128, 0)])
 
             # yellow zone
-            elif occupiedHeight > 0.5 and occupiedHeight < 1 :
+            elif occupiedHeight > 0.5 :
                 cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,255,255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,255,255), 2)
+
+                # area denoting robot's future location on overlay
+                cv2.line(img, (270, 300), (495, 300), (0,255,255), 2)
+                cv2.line(img, (315, 250), (448, 250), (0,255,255), 2)
+
                 #pathHistory.append([x1, y1, (0,255,255)])
                 #pathHistory.append([x2, y2, (0,255,255)])
 
             # red zone
-            if occupiedHeight > 1 :
+            if pointInQuad(futureX, futureY, 270, 300, 495, 300, 315, 250, 448, 250) :
                 cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,0,255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,0,255), 2)
+
+                # area denoting robot's future location on overlay
+                cv2.line(img, (270, 300), (495, 300), (0,0,255), 2)
+                cv2.line(img, (315, 250), (448, 250), (0,0,255), 2)
+
                 #pathHistory.append([x1, y1, (0, 0, 255)])
                 #pathHistory.append([x2, y2, (0, 0, 255)])
 
             #for i in pathHistory:
                 #cv2.circle(img, (int(i[0]), int(i[1])), 3, i[2], cv2.FILLED)
-
+            print(pointInQuad(futureX, futureY, 270, 300, 495, 300, 315, 250, 448, 250))
             # highlighting shoulder points
             cv2.circle(img, (lmls[1], lmls[2]), 5, (255, 255, 255), cv2.FILLED)
             cv2.circle(img, (lmrs[1], lmrs[2]), 5, (255, 255, 255), cv2.FILLED)
@@ -583,7 +604,7 @@ def main(path):
 
 
 if __name__ == "__main__":
-    directory = 'resources\recordedTestFootage'
+    directory = 'resources\stockTestFootage'
     for filename in os.listdir(directory):
         f = os.path.join(directory, filename)
         if os.path.isfile(f):

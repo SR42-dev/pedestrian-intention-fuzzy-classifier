@@ -1,20 +1,21 @@
+import os
 import cv2
 import math
 import time
 import numpy as np
+import pandas as pd
 import mediapipe as mp
+
 
 # rotation matrix helper functions
 def vec_length(v: np.array):
     return np.sqrt(sum(i ** 2 for i in v))
-
 
 def normalize(v):
     norm = np.linalg.norm(v)
     if norm == 0:
         return v
     return v / norm
-
 
 def look_at(eye: np.array, target: np.array):
     axis_z = normalize((eye - target))
@@ -29,13 +30,96 @@ def look_at(eye: np.array, target: np.array):
     rot_matrix = np.matrix([axis_x, axis_y, axis_z]).transpose()
     return rot_matrix
 
+
+# filter(s)
+class Kalman:
+
+    def __init__(self, windowSize=10, n=5):
+        # x: predicted angle
+        # p: predicted angle uncertainty
+        # n: number of iterations to run the filter for
+        # dt: time interval for updates
+        # v: angular velocity of obstruction
+        # p_v: uncertainty in angular velocity
+        # q: process noise variance (uncertainty in the system's dynamic model)
+        # r: measurement uncertainty
+        # Z: list of position estimates derived from sensor measurements
+
+        # initializing with static values due to very low variance in testing
+        self.x = 0
+        self.p = 0.5
+        self.windowSize = windowSize
+        self.n = n # must be smaller than windowSize
+        self.Z = []
+
+        self.q = 0 # assuming dynamic model uncertainty to be 0 (perfect system)
+        self.dt = 0.05 # average latency is 50ms
+        self.r = 0.5 # angle measurement uncertainty (determine experimentally based on test case)
+
+        # self processing attributes
+        self.curTime = time.time()
+
+    def predict(self):
+        # prediction assuming a dynamic model
+        self.x = self.x   # state transition equation
+        self.p = self.p + self.q  # predicted covariance equation
+
+    def measure(self, z):
+
+        if len(self.Z) < self.windowSize:
+            self.Z.append(z)
+        else:
+            self.Z.pop(0)
+            self.Z.append(z)
+
+        return np.mean(self.Z)
+
+    def update(self, z):
+        k = self.p / (self.p + self.r)  # Kalman gain
+        self.x = self.x + k * (z - self.x)  # state update
+        self.p = (1 - k) * self.p  # covariance update
+
+    def process(self, i):
+
+        for j in range(1, self.n):
+            self.predict()
+            z = self.measure(i)
+            self.update(z)
+
+        return self.x
+
+
+class StreamingMovingAverage:
+
+    def __init__(self, window_size):
+        self.window_size = window_size
+        self.values = []
+        self.sum = 0
+
+    def process(self, value):
+        self.values.append(value)
+        self.sum += value
+        if len(self.values) > self.window_size:
+            self.sum -= self.values.pop(0)
+        return float(self.sum) / len(self.values)
+
+class noFilter:
+
+    def __init__(self):
+        pass
+
+    def process(self, value):
+        return value
+
+# pose detector class
 class PoseDetector:
+
     """
     Estimates Pose points of a human body using the mediapipe library.
     """
 
-    def __init__(self, mode=False, smooth=True,
-                 detectionCon=0.5, trackCon=0.5):
+    def __init__(self, mode=False, smooth=True, detectionCon=0.5, trackCon=0.5):
+
         """
         :param mode: In static mode, detection is done on each image: slower
         :param upBody: Upper boy only flag
@@ -56,13 +140,21 @@ class PoseDetector:
                                      min_detection_confidence=self.detectionCon,
                                      min_tracking_confidence=self.trackCon)
 
+    def filterSettings(self, xFilter, yFilter, angleFilter):
+
+        self.xFilter = xFilter
+        self.yFilter = yFilter
+        self.angleFilter = angleFilter
+
     def findPose(self, img, draw=True):
+
         """
         Find the pose landmarks in an Image of BGR color space.
         :param img: Image to find the pose in.
         :param draw: Flag to draw the output on the image.
         :return: Image with or without drawings
         """
+
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         self.results = self.pose.process(imgRGB)
         if self.results.pose_landmarks:
@@ -72,6 +164,7 @@ class PoseDetector:
         return img
 
     def findPosition(self, img, draw=True, bboxWithHands=False):
+
         self.lmList = []
         self.bboxInfo = {}
         if self.results.pose_landmarks:
@@ -93,7 +186,7 @@ class PoseDetector:
             y1 = self.lmList[1][2] - ad
             bbox = (x1, y1, x2 - x1, y2 - y1)
             cx, cy = bbox[0] + (bbox[2] // 2), \
-                     bbox[1] + bbox[3] // 2
+                     (bbox[1] + bbox[3] // 2) - 40
 
             self.bboxInfo = {"bbox": bbox, "center": (cx, cy)}
 
@@ -104,6 +197,7 @@ class PoseDetector:
         return self.lmList, self.bboxInfo
 
     def findAngle(self, img, p1, p2, p3, draw=True):
+
         """
         Finds angle between three points. Inputs index values of landmarks
         instead of the actual points.
@@ -121,8 +215,7 @@ class PoseDetector:
         x3, y3 = self.lmList[p3][1:]
 
         # Calculate the Angle
-        angle = math.degrees(math.atan2(y3 - y2, x3 - x2) -
-                             math.atan2(y1 - y2, x1 - x2))
+        angle = math.degrees(math.atan2(y3 - y2, x3 - x2) - math.atan2(y1 - y2, x1 - x2))
         if angle < 0:
             angle += 360
 
@@ -136,11 +229,11 @@ class PoseDetector:
             cv2.circle(img, (x2, y2), 15, (0, 0, 255), 2)
             cv2.circle(img, (x3, y3), 10, (0, 0, 255), cv2.FILLED)
             cv2.circle(img, (x3, y3), 15, (0, 0, 255), 2)
-            cv2.putText(img, str(int(angle)), (x2 - 50, y2 + 50),
-                        cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 2)
+            cv2.putText(img, str(int(angle)), (x2 - 50, y2 + 50), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 2)
         return angle
 
     def findDistance(self, p1, p2, img, draw=True, r=15, t=3):
+
         x1, y1 = self.lmList[p1][1:]
         x2, y2 = self.lmList[p2][1:]
         cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
@@ -160,8 +253,7 @@ class PoseDetector:
     # quaternion conversions done in this next function
     def angleOfOrientation(self, p1, p2):
 
-        if self.results.pose_landmarks != None :
-
+        if self.results.pose_landmarks != None:
             # calculating the rotation matrix
             orient = look_at(np.array([p1[1], p1[2], p1[3]]), np.array([p2[1], p2[2], p2[3]]))
             # print(orient)  # convert each value from radians to degrees
@@ -190,87 +282,309 @@ class PoseDetector:
             # converting quaternion to polar form
             A = np.math.sqrt((a ** 2) + (b1 ** 2) + (b2 ** 2) + (b3 ** 2))
             theta = np.math.acos(a / A)
-            B = np.math.sqrt((A ** 2) - (a ** 2))
-            cosphi1 = b1 / B
-            cosphi2 = b2 / B
-            cosphi3 = b3 / B
+            # B = np.math.sqrt((A ** 2) - (a ** 2))
+            # cosphi1 = b1 / B
+            # cosphi2 = b2 / B
+            # cosphi3 = b3 / B
 
             realAngle = ((np.rad2deg(theta) / 45) - 1) * 180
 
+            # filtering the reading
+            realAngle = self.angleFilter.process(realAngle)
+
             return realAngle
 
-def main():
+    # implicit fuzzy classification implemented here
+    def futureXY(self, img, lmls, lmrs, init, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, err, draw=True):
 
-    # capture frames from a camera
-    cap = cv2.VideoCapture(0)
-    detector = PoseDetector()
+        if (angleOfApproach > 0) and (angleOfApproach < 90) and (centerXApproachSpeed > 0) and (centerYApproachSpeed < 0):
+            futureX = self.xFilter.process(init[0] + np.math.sqrt(
+                ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
+            futureY = self.yFilter.process(init[1] - np.math.sqrt(
+                ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
 
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS,thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.putText(img, 'CASE 1', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+
+
+        elif (angleOfApproach > 0) and (angleOfApproach < 90) and (centerXApproachSpeed < 0) and (centerYApproachSpeed > 0):
+            futureX = self.xFilter.process(init[0] - np.math.sqrt(
+                ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
+            futureY = self.yFilter.process(init[1] + np.math.sqrt(
+                ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
+
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.putText(img, 'CASE 2', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+
+        elif (angleOfApproach > 90) and (angleOfApproach < 180) and (centerXApproachSpeed > 0) and (centerYApproachSpeed > 0):
+            futureX = self.xFilter.process(init[0] + np.math.sqrt(
+                ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
+            futureY = self.yFilter.process(init[1] + np.math.sqrt(
+                ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
+
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.putText(img, 'CASE 3', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+
+        elif (angleOfApproach > 90) and (angleOfApproach < 180) and (centerXApproachSpeed < 0) and (centerYApproachSpeed < 0):
+            futureX = self.xFilter.process(init[0] - np.math.sqrt(
+                ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
+            futureY = self.yFilter.process(init[1] - np.math.sqrt(
+                ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
+
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.putText(img, 'CASE 4', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+
+        elif (((angleOfApproach > 0 - err) and (angleOfApproach < 0 + err)) or ((angleOfApproach > 180 - err) and (angleOfApproach < 180 + err))) and (centerXApproachSpeed > 0) and ((centerYApproachSpeed > 0 - err) and (centerYApproachSpeed < 0 + err)):
+            futureX = self.xFilter.process(init[0] + np.math.sqrt(
+                ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
+            futureY = self.yFilter.process(init[1])
+
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.putText(img, 'CASE 5', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+
+        elif (((angleOfApproach > 0 - err) and (angleOfApproach < 0 + err)) or ((angleOfApproach > 180 - err) and (angleOfApproach < 190 - err))) and (centerXApproachSpeed < 0) and ((centerYApproachSpeed > 0 - err) and (centerYApproachSpeed < 0 + err)):
+            futureX = self.xFilter.process(init[0] - np.math.sqrt(
+                ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
+            futureY = self.yFilter.process(init[1])
+
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.putText(img, 'CASE 6', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+
+        elif ((angleOfApproach > 90 - err) and (angleOfApproach < 90 + err)) and ((centerXApproachSpeed > 0 - err) and (centerXApproachSpeed < 0 + err)) and (centerYApproachSpeed > 0):
+            futureX = self.xFilter.process(init[0])
+            futureY = self.yFilter.process(init[1] - np.math.sqrt(
+                ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
+
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.putText(img, 'CASE 7', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+
+        elif ((angleOfApproach > 90 - err) and (angleOfApproach < 90 + err)) and ((centerXApproachSpeed > 0 - err) and (centerXApproachSpeed < 0 + err)) and (centerYApproachSpeed < 0):
+            futureX = self.xFilter.process(init[0])
+            futureY = self.yFilter.process(init[1] + np.math.sqrt(
+                ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
+
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.putText(img, 'CASE 8', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+
+        else:
+            futureX = self.xFilter.process(init[0])
+            futureY = self.yFilter.process(init[1])
+
+            if draw == True:
+                cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
+                cv2.putText(img, 'CASE 9', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+
+        return futureX, futureY
+
+def main(path):
+
+    pathOverlay = cv2.imread('resources/overlays/pathOverlayBlack.png')
+    cap = cv2.VideoCapture(path)
+    cap.set(3, 768)
+    cap.set(4, 432)
+
+    # FPS initializations
     curTime = time.time() # start time
+    lastTime = curTime
     fps = 0
+    frameNumber = 0
 
-    lastXCenterDisplacement = 0
+    # general initializations
+    lastXCenter = 0
+    lastYCenter = 0
     occupiedHeight = 0
-    xCenterDisplacement = 0
-    centerApproachSpeed = 0
-    angleOfOrientation = 0
+    centerXApproachSpeed = 0
+    centerYApproachSpeed = 0
+    angleOfApproach = 0
+    lastDeltaY = 0
+
+    # future definitions
+    futureX = 0
+    futureY = 0
+    # threshold = 10 # collision threshold for futureDeltaY
+
+    # past definitions
+    currentFrame = 0
+    frameWindow = 4
+
+    # pose detector settings and variables that visibly impact output
+    detector = PoseDetector()
+    # filter options : StreamingMovingAverage(10), Kalman(windowSize=20, n=10), noFilter()
+    detector.filterSettings(xFilter=StreamingMovingAverage(20),
+                            yFilter=StreamingMovingAverage(20),
+                            angleFilter=Kalman(windowSize=25, n=10))
+    timeToFuture = 100 # all collision predictions are made for these many seconds into the future
+    futureErrorThresholds = 10
+    drawState = True
+
+    #pathHistory = []
 
     while True:
 
         success, img = cap.read()
-        img = detector.findPose(img)
-        lmList, bboxInfo = detector.findPosition(img, bboxWithHands=False)
+
+        img = cv2.resize(img, (768, 432))
+        img = cv2.flip(img, 1)
+
+        img = detector.findPose(img, draw=drawState)
+
+        # resizing & adding path overlay
+        pathOverlay = cv2.resize(pathOverlay, (768, 432))
+        img = cv2.addWeighted(img,0.7,pathOverlay,0.3,0)
+
+        # path overlay (narrow)
+        cv2.line(img, (150, 432), (360, 200), (255, 255, 255), 2)
+        cv2.line(img, (618, 432), (400, 200), (255, 255, 255), 2)
+        cv2.line(img, (360, 200), (400, 200), (255, 255, 255), 2)
+
+        lmList, bboxInfo = detector.findPosition(img, draw=False, bboxWithHands=False)
 
         if bboxInfo:
 
             # finding the center of the target pose
             center = bboxInfo["center"]
-            cv2.circle(img, center, 5, (255, 0, 255), cv2.FILLED)
+            # cv2.circle(img, center, 5, (255, 0, 255), cv2.FILLED)
 
             # finding the difference between highest landmark and lowest landmark in pixels
             yLocations = []
-            for lm in lmList :
+            for lm in lmList:
                 yLocations.append(lm[2])
-
                 if (lm[0] == 12):
                     lmrs = lm
-                elif (lm[0] == 11) :
+                elif (lm[0] == 11):
                     lmls = lm
-
             deltaY = max(yLocations) - min(yLocations)
+            occupiedHeight = deltaY / 432 # indicator of pedestrian's apparent height ( in terms of percentage of Y axis occupied)
 
-            occupiedHeight = deltaY / cv2.getWindowImageRect('img')[3] # target variable 1
-            xCenterDisplacement = (cv2.getWindowImageRect('img')[2] / 2) - center[0] # target variable 2
-            centerApproachSpeed = (xCenterDisplacement - lastXCenterDisplacement) * fps # target variable 3
+            centerXApproachSpeed = (center[0] - lastXCenter) / (time.time() - lastTime)
+            centerYApproachSpeed = (center[1] - lastYCenter) / (time.time() - lastTime)
+
+            # angle of approach reporting currently accurate only between the range of 30 and 160 degrees
             angleOfApproach = detector.angleOfOrientation(lmls, lmrs)
 
-            # print(lmls)
-            # print(lmrs)
+            # filtering, predicting & drawing the future location of the target pedestrian
+            futureX, futureY = detector.futureXY(img, lmls, lmrs, center, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, futureErrorThresholds, draw=drawState)
 
-            cv2.putText(img, 'Angle : {0:.2f}'.format(angleOfApproach), (50, 70), cv2.FONT_HERSHEY_PLAIN, 3, (255, 255, 0),5)
+            # path generation
+            oShiftX = futureX - ((lmls[1] + lmrs[1]) / 2)
+            oShiftY = futureY - ((lmls[2] + lmrs[2]) / 2)
+            x1 = lmls[1] + oShiftX
+            y1 = lmls[2] + oShiftY
+            x2 = lmrs[1] + oShiftX
+            y2 = lmrs[2] + oShiftY
+
+            # conditions for collision prediction
+            #cv2.putText(img, '{0:.2f}'.format(occupiedHeight), (10, 115), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0),1, cv2.LINE_AA)
+            #cv2.putText(img, '{0:.2f}'.format(angleOfApproach), (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+
+            # green zone
+            if occupiedHeight < 0.5 :
+                cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,128,0), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,128,0), 2)
+                #pathHistory.append([x1, y1, (0, 128, 0)])
+                #pathHistory.append([x2, y2, (0, 128, 0)])
+
+            # yellow zone
+            elif occupiedHeight > 0.5 and occupiedHeight < 1 :
+                cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,255,255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,255,255), 2)
+                #pathHistory.append([x1, y1, (0,255,255)])
+                #pathHistory.append([x2, y2, (0,255,255)])
+
+            # red zone
+            if occupiedHeight > 1 :
+                cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
+                cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,0,255), 2)
+                cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,0,255), 2)
+                #pathHistory.append([x1, y1, (0, 0, 255)])
+                #pathHistory.append([x2, y2, (0, 0, 255)])
+
+            #for i in pathHistory:
+                #cv2.circle(img, (int(i[0]), int(i[1])), 3, i[2], cv2.FILLED)
+
+            # highlighting shoulder points
             cv2.circle(img, (lmls[1], lmls[2]), 5, (255, 255, 255), cv2.FILLED)
             cv2.circle(img, (lmrs[1], lmrs[2]), 5, (255, 255, 255), cv2.FILLED)
 
-            lastXCenterDisplacement = xCenterDisplacement # displacement updation
+            # displacement updation, will cause first n frames in window to be highly inaccurate
+            currentFrame += 1
+            frameNumber += 1
+            if (currentFrame == frameWindow) and (frameNumber > frameWindow):
+                lastXCenter = center[0]
+                lastYCenter = center[1]
+                lastDeltaY = deltaY
+                lastTime = time.time()
+                currentFrame = 0
+
+            elif (frameNumber < frameWindow):
+                lastXCenter = center[0]
+                lastYCenter = center[1]
+                lastDeltaY = deltaY
+                currentFrame = 0
+
+            else:
+                pass
+
+        # delay & display data on overlay
+        # time.sleep(0.2)
 
         # FPS calculation
         fps = 1 / (time.time() - curTime)
         curTime = time.time()
-        cv2.putText(img, '{0:.2f}'.format(fps), (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 1, (100, 255, 0), 1, cv2.LINE_AA)
+        cv2.putText(img, '{0:.2f}'.format(fps), (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+        cv2.putText(img, '{0:.2f}'.format((1 / fps) * 1000), (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
 
-        # data output
-        print('--------------\n' + 'FPS = {0:.2f}\n'.format(fps)
-              + 'yBigness (%) = {0:.2f}\n'.format(occupiedHeight)
-              + 'Displacement from center (px) = {0:.2f}\n'.format(xCenterDisplacement)
-              + 'Speed of center approach (px/s) = {0:.2f}\n'.format(centerApproachSpeed)
-              + '--------------\n')
+        # scale
+        cv2.putText(img, '50px: ', (675, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (100, 255, 0), 1, cv2.LINE_AA)
+        cv2.line(img, (710, 17), (760, 17), (100, 255, 0), 1)
+        cv2.line(img, (710, 17), (710, 22), (100, 255, 0), 1)
+        cv2.line(img, (760, 17), (760, 22), (100, 255, 0), 1)
+
+        # test case
+        cv2.putText(img, str(path), (300, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
 
         cv2.imshow("img", img)
 
-        if cv2.waitKey(1) == ord('q'):
+        if (cv2.waitKey(1) == ord('q')) or (not success):
+            # cv2.imwrite('resources/snapshot.png', img)
             break
 
+    # releasing & destroying windows
     cap.release()
     cv2.destroyAllWindows()
 
+
 if __name__ == "__main__":
-    main()
+    directory = 'resources\stockTestFootage'
+    for filename in os.listdir(directory):
+        f = os.path.join(directory, filename)
+        if os.path.isfile(f):
+            main(f)
