@@ -548,9 +548,9 @@ def main(path):
                 #pathHistory.append([x1, y1, (0, 0, 255)])
                 #pathHistory.append([x2, y2, (0, 0, 255)])
 
-            #for i in pathHistory:
+            # for i in pathHistory:
                 #cv2.circle(img, (int(i[0]), int(i[1])), 3, i[2], cv2.FILLED)
-            print(pointInQuad(futureX, futureY, 270, 300, 495, 300, 315, 250, 448, 250))
+            # print(pointInQuad(futureX, futureY, 270, 300, 495, 300, 315, 250, 448, 250))
             # highlighting shoulder points
             cv2.circle(img, (lmls[1], lmls[2]), 5, (255, 255, 255), cv2.FILLED)
             cv2.circle(img, (lmrs[1], lmrs[2]), 5, (255, 255, 255), cv2.FILLED)

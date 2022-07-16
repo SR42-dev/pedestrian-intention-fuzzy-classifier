@@ -1,10 +1,4 @@
-Week 4 complete. Last stretch pending.
-
-Stuff to complete in week 5 before final presentation :
-- View visualizing path of the pedestrian and the path of the robot (show intersection)
-- Record scenes.
-
-Notes to take the project further :
--Hardware implementation (if necessary) & recording of dynamic scenes.
-- Extend algorithm to multiple pedestrians by multithreading
-- Paper writing initialization
+Program status :
+- main.py : predicts collision by assuming future location of camera and predicting futureX & futureY (timeToFuture = 1).
+- singlePedestrianPathIntersectionx1.x.py : extrapolates the entire path across the overlay (timeToFuture = 100).
+- singlePedestrianPathPrediction3.x.py : visualizes predicted direction (timeToFuture = 1)
