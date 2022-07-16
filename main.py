@@ -9,20 +9,25 @@ import matplotlib.path as mplPath
 
 # function to check if a point is present within a defined quadrilateral
 def pointInQuad(x, y, x1, y1, x2, y2, x3, y3, x4, y4):
-    polygon = mplPath.Path(np.array([[x1, y1], [x2, y2], [x3, y3], [x4, y4]]))
+
+    polygon = mplPath.Path(np.array([[x1, y1], [x2, y2], [x3, y3], [x4, y4]])) # drawing and storing the quadrilateral path
     point = (x, y)
-    return polygon.contains_point(point)
+    return polygon.contains_point(point) # checking for the point's existence within the drawn quadrilateral
 
 # rotation matrix helper functions
+
+# function to return the magnitude of a vector
 def vec_length(v: np.array):
     return np.sqrt(sum(i ** 2 for i in v))
 
+# function to process a vector parameter and return a normalized vector
 def normalize(v):
     norm = np.linalg.norm(v)
     if norm == 0:
         return v
     return v / norm
 
+# function to calculate and return a rotation matrix for quaternion generation
 def look_at(eye: np.array, target: np.array):
     axis_z = normalize((eye - target))
     if vec_length(axis_z) == 0:
@@ -38,6 +43,8 @@ def look_at(eye: np.array, target: np.array):
 
 
 # filter(s)
+
+# Kalman filter in one dimension
 class Kalman:
 
     def __init__(self, windowSize=10, n=5):
