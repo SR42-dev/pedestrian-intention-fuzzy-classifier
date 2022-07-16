@@ -1,18 +1,23 @@
 # pedestrian-intention-fuzzy-classifier
 A research project repository containing algorithms to classify pedestrian obstruction probabilities into fuzzy logic states using 2D cameras 
 
-### Current week : 5
-#### Deadline : 15-July-2022
+### Current week : 5+
+#### Deadline : 18-July-2022
 
 ### Next short-term goal(s) :
 
-- View visualizing path of the pedestrian and the path of the robot (show intersection)
-- Record scenes
+- View visualizing path of the pedestrian and the path of the robot (show intersection) [DONE]
+- Display predicted outcome in the previous implementation
+- Document the code and all it's functions & underlying algorithms
+- Write setup instructions in README.md and transfer current contents to another README.md under /resources
+- Figure out a project title
+- Record a singular testing scene and plug path in all three source code variations
 
 Notes to take the project further :
+- Paper writing : focus on performance analysis using more videos from online
 - Hardware implementation (if necessary) & recording of dynamic scenes
 - Extend algorithm to multiple pedestrians by multithreading
-- Paper writing initialization
+
 
 ## Cheat sheets :
 
