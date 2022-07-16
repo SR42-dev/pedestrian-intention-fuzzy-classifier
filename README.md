@@ -7,7 +7,7 @@ A research project repository containing algorithms to classify pedestrian obstr
 ### Next short-term goal(s) :
 
 - View visualizing path of the pedestrian and the path of the robot (show intersection) [DONE]
-- Display predicted outcome in the previous implementation
+- Display predicted outcome in the previous implementation [DONE]
 - Document the code and all it's functions & underlying algorithms
 - Write setup instructions in README.md and transfer current contents to another README.md under /resources
 - Figure out a project title

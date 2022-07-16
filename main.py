@@ -541,9 +541,10 @@ def main(path):
                 cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,0,255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,0,255), 2)
 
-                # area denoting robot's future location on overlay
+                # area denoting robot's future location on overlay with outcome printing
                 cv2.line(img, (270, 300), (495, 300), (0,0,255), 2)
                 cv2.line(img, (315, 250), (448, 250), (0,0,255), 2)
+                cv2.putText(img, 'COLLISION IMMINENT', (600, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
 
                 #pathHistory.append([x1, y1, (0, 0, 255)])
                 #pathHistory.append([x2, y2, (0, 0, 255)])
