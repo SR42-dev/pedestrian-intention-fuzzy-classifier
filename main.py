@@ -1,9 +1,7 @@
 import os
 import cv2
-import math
 import time
 import numpy as np
-import pandas as pd
 import mediapipe as mp
 import matplotlib.path as mplPath
 
@@ -552,8 +550,8 @@ def main(path):
     cap.release()
     cv2.destroyAllWindows()
 
-# a definition of the main parameters
 
+# a definition of the main parameters
 if __name__ == "__main__":
 
     # defining the directory to obtain the test videos from
