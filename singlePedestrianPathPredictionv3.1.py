@@ -1,11 +1,24 @@
+"""
+
+singlePedestrianPathPrediction3.1.py
+
+- This script classifies the predicted direction of movement of a pedestrian obstacle and visualizes it's projection on the frame.
+- All the other scripts that have been worked on contain code based on this script.
+- Data collection of various points mentioned in the code is conducted on this script in order to visualize the range of accuracy of the model.
+- This project intends to eliminate the usage of an additional ML pipeline to predict the same in order to reduce detection and classification latency as the use case targetted for this project is that of avoiding road accidents caused by autonomous robots due to failures in reacting on time to a sudden change in the movement intention of a pedestrian obstacle.
+- As per preliminary literature surveys, modern standards for this detection speed is close to 200ms. This model is capable of performing the same in 50ms.
+- Understandably, the numbers quoted in the previous point may appear to be outliers at first, due to which documentation will be provided defining the exact testing parameters.
+- This script doesn't highlight the likelihood of collision. Refer to main .py for the same.
+
+"""
+
+# importing the necessary libraries
 import os
 import cv2
-import math
 import time
 import numpy as np
 import pandas as pd
 import mediapipe as mp
-
 
 # rotation matrix helper functions
 

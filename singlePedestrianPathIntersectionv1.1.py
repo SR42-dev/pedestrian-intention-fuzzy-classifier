@@ -1,9 +1,19 @@
+"""
+
+singlePedestrianPathIntersectionv1.1.py
+
+- This script extrapolates the predicted path in completion assuming no sudden changes in fuzzy state for each frame based on data from the last defined one.
+- This extrapolation is done over a frame containing a pre defined path overlay for the robot that the camera is assumed to be mounted on.
+- While it is mentioned in the code that the prediction is made 100 seconds into the future, this is merely an elegant hack to generate a full path from the location prediction source codes in the other two scripts given in the directory.
+- This script doesn't highlight the likelihood of collision. Refer to main .py for the same.
+
+"""
+
+# importing the necessary libraries
 import os
 import cv2
-import math
 import time
 import numpy as np
-import pandas as pd
 import mediapipe as mp
 
 
