@@ -168,7 +168,7 @@ class PoseDetector:
                 cx, cy, cz = int(lm.x * w), int(lm.y * h), int(lm.z * w)
                 self.lmList.append([id, cx, cy, cz])
 
-            # Bounding Box
+            # bounding box generation
             ad = abs(self.lmList[12][1] - self.lmList[11][1]) // 2
             if bboxWithHands:
                 x1 = self.lmList[16][1] - ad
@@ -386,7 +386,7 @@ def main(path):
     futureX = 0  # the predicted X coordinate of the location of the obstacle
     futureY = 0  # the predicted Y coordinate of the location of the obstacle
 
-    # past definitions
+    # past frame definitions
     currentFrame = 0  # the number of the current frame
     frameWindow = 4  # the window size of frames past the present for initializations as the last state of the system
 
@@ -430,6 +430,7 @@ def main(path):
 
             # finding the center of the target pose
             center = bboxInfo["center"]
+
             yLocations = []
             for lm in lmList:
                 yLocations.append(lm[2])

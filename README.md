@@ -8,8 +8,9 @@ A research project repository containing algorithms to classify pedestrian obstr
 
 - View visualizing path of the pedestrian and the path of the robot (show intersection) [DONE]
 - Display predicted outcome in the previous implementation [DONE]
-- Document the code and all it's functions & underlying algorithms
+- Document the code and all it's functions & underlying algorithms (mention the three programs and their outputs)
 - Write setup instructions in README.md and transfer current contents to another README.md under /resources
+- Mention descriptions of fuzzzy states in the documentation
 - Figure out a project title
 - Record a singular testing scene and plug path in all three source code variations
 
