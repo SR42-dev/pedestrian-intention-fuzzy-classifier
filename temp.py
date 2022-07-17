@@ -1,28 +1,31 @@
 import os
 import cv2
-import math
 import time
 import numpy as np
-import pandas as pd
 import mediapipe as mp
 import matplotlib.path as mplPath
 
 # function to check if a point is present within a defined quadrilateral
 def pointInQuad(x, y, x1, y1, x2, y2, x3, y3, x4, y4):
-    polygon = mplPath.Path(np.array([[x1, y1], [x2, y2], [x3, y3], [x4, y4]]))
+
+    polygon = mplPath.Path(np.array([[x1, y1], [x2, y2], [x3, y3], [x4, y4]])) # drawing and storing the quadrilateral path
     point = (x, y)
-    return polygon.contains_point(point)
+    return polygon.contains_point(point) # checking for the point's existence within the drawn quadrilateral
 
 # rotation matrix helper functions
+
+# function to return the magnitude of a vector
 def vec_length(v: np.array):
     return np.sqrt(sum(i ** 2 for i in v))
 
+# function to process a vector parameter and return a normalized vector
 def normalize(v):
     norm = np.linalg.norm(v)
     if norm == 0:
         return v
     return v / norm
 
+# function to calculate and return a rotation matrix for quaternion generation
 def look_at(eye: np.array, target: np.array):
     axis_z = normalize((eye - target))
     if vec_length(axis_z) == 0:
@@ -38,6 +41,8 @@ def look_at(eye: np.array, target: np.array):
 
 
 # filter(s)
+
+# Kalman filter in one dimension implemented as a class
 class Kalman:
 
     def __init__(self, windowSize=10, n=5):
@@ -45,8 +50,6 @@ class Kalman:
         # p: predicted angle uncertainty
         # n: number of iterations to run the filter for
         # dt: time interval for updates
-        # v: angular velocity of obstruction
-        # p_v: uncertainty in angular velocity
         # q: process noise variance (uncertainty in the system's dynamic model)
         # r: measurement uncertainty
         # Z: list of position estimates derived from sensor measurements
@@ -62,14 +65,13 @@ class Kalman:
         self.dt = 0.05 # average latency is 50ms
         self.r = 0.5 # angle measurement uncertainty (determine experimentally based on test case)
 
-        # self processing attributes
-        self.curTime = time.time()
-
+    # prediction stage
     def predict(self):
         # prediction assuming a dynamic model
         self.x = self.x   # state transition equation
         self.p = self.p + self.q  # predicted covariance equation
 
+    # measurement stage
     def measure(self, z):
 
         if len(self.Z) < self.windowSize:
@@ -80,11 +82,13 @@ class Kalman:
 
         return np.mean(self.Z)
 
+    # updation stage
     def update(self, z):
         k = self.p / (self.p + self.r)  # Kalman gain
         self.x = self.x + k * (z - self.x)  # state update
         self.p = (1 - k) * self.p  # covariance update
 
+    # iterative processing stage
     def process(self, i):
 
         for j in range(1, self.n):
@@ -94,14 +98,15 @@ class Kalman:
 
         return self.x
 
-
+# streaming moving average filter in one dimension implemented as a class
 class StreamingMovingAverage:
 
     def __init__(self, window_size):
-        self.window_size = window_size
-        self.values = []
-        self.sum = 0
+        self.window_size = window_size # size of the window of values
+        self.values = [] # list to hold said window
+        self.sum = 0 # initializing the sum for the moving average
 
+    # processing the average
     def process(self, value):
         self.values.append(value)
         self.sum += value
@@ -109,6 +114,7 @@ class StreamingMovingAverage:
             self.sum -= self.values.pop(0)
         return float(self.sum) / len(self.values)
 
+# empty filter class implemented for comparative testing
 class noFilter:
 
     def __init__(self):
@@ -117,7 +123,7 @@ class noFilter:
     def process(self, value):
         return value
 
-# pose detector class
+# pose detector class for mediapipe
 class PoseDetector:
 
     """
@@ -125,14 +131,6 @@ class PoseDetector:
     """
 
     def __init__(self, mode=False, smooth=True, detectionCon=0.5, trackCon=0.5):
-
-        """
-        :param mode: In static mode, detection is done on each image: slower
-        :param upBody: Upper boy only flag
-        :param smooth: Smoothness Flag
-        :param detectionCon: Minimum Detection Confidence Threshold
-        :param trackCon: Minimum Tracking Confidence Threshold
-        """
 
         self.mode = mode
         self.smooth = smooth
@@ -146,20 +144,15 @@ class PoseDetector:
                                      min_detection_confidence=self.detectionCon,
                                      min_tracking_confidence=self.trackCon)
 
+    # a method to initialize the filters used in objects of this class (i.e.; single human obstacles detected by the mediapipe model)
     def filterSettings(self, xFilter, yFilter, angleFilter):
 
         self.xFilter = xFilter
         self.yFilter = yFilter
         self.angleFilter = angleFilter
 
+    # a method to detect and draw the landmarks detected by the model on the input frame
     def findPose(self, img, draw=True):
-
-        """
-        Find the pose landmarks in an Image of BGR color space.
-        :param img: Image to find the pose in.
-        :param draw: Flag to draw the output on the image.
-        :return: Image with or without drawings
-        """
 
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         self.results = self.pose.process(imgRGB)
@@ -169,6 +162,7 @@ class PoseDetector:
                                            self.mpPose.POSE_CONNECTIONS)
         return img
 
+    # a method to find the positions of the detected landmarks and return the same along with bounding box information
     def findPosition(self, img, draw=True, bboxWithHands=False):
 
         self.lmList = []
@@ -202,67 +196,12 @@ class PoseDetector:
 
         return self.lmList, self.bboxInfo
 
-    def findAngle(self, img, p1, p2, p3, draw=True):
-
-        """
-        Finds angle between three points. Inputs index values of landmarks
-        instead of the actual points.
-        :param img: Image to draw output on.
-        :param p1: Point1 - Index of Landmark 1.
-        :param p2: Point2 - Index of Landmark 2.
-        :param p3: Point3 - Index of Landmark 3.
-        :param draw:  Flag to draw the output on the image.
-        :return:
-        """
-
-        # Get the landmarks
-        x1, y1 = self.lmList[p1][1:]
-        x2, y2 = self.lmList[p2][1:]
-        x3, y3 = self.lmList[p3][1:]
-
-        # Calculate the Angle
-        angle = math.degrees(math.atan2(y3 - y2, x3 - x2) - math.atan2(y1 - y2, x1 - x2))
-        if angle < 0:
-            angle += 360
-
-        # Draw
-        if draw:
-            cv2.line(img, (x1, y1), (x2, y2), (255, 255, 255), 3)
-            cv2.line(img, (x3, y3), (x2, y2), (255, 255, 255), 3)
-            cv2.circle(img, (x1, y1), 10, (0, 0, 255), cv2.FILLED)
-            cv2.circle(img, (x1, y1), 15, (0, 0, 255), 2)
-            cv2.circle(img, (x2, y2), 10, (0, 0, 255), cv2.FILLED)
-            cv2.circle(img, (x2, y2), 15, (0, 0, 255), 2)
-            cv2.circle(img, (x3, y3), 10, (0, 0, 255), cv2.FILLED)
-            cv2.circle(img, (x3, y3), 15, (0, 0, 255), 2)
-            cv2.putText(img, str(int(angle)), (x2 - 50, y2 + 50), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 2)
-        return angle
-
-    def findDistance(self, p1, p2, img, draw=True, r=15, t=3):
-
-        x1, y1 = self.lmList[p1][1:]
-        x2, y2 = self.lmList[p2][1:]
-        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-
-        if draw:
-            cv2.line(img, (x1, y1), (x2, y2), (255, 0, 255), t)
-            cv2.circle(img, (x1, y1), r, (255, 0, 255), cv2.FILLED)
-            cv2.circle(img, (x2, y2), r, (255, 0, 255), cv2.FILLED)
-            cv2.circle(img, (cx, cy), r, (0, 0, 255), cv2.FILLED)
-        length = math.hypot(x2 - x1, y2 - y1)
-
-        return length, img, [x1, y1, x2, y2, cx, cy]
-
-    def angleCheck(self, myAngle, targetAngle, addOn=20):
-        return targetAngle - addOn < myAngle < targetAngle + addOn
-
-    # quaternion conversions done in this next function
+    # a method to extract the angle of orientation of the detected human obstacle by quaternion generation from the projection of two landmarks
     def angleOfOrientation(self, p1, p2):
 
         if self.results.pose_landmarks != None:
             # calculating the rotation matrix
             orient = look_at(np.array([p1[1], p1[2], p1[3]]), np.array([p2[1], p2[2], p2[3]]))
-            # print(orient)  # convert each value from radians to degrees
 
             vec1 = np.array(orient[0], dtype=float)
             vec3 = np.array(orient[1], dtype=float)
@@ -300,106 +239,123 @@ class PoseDetector:
 
             return realAngle
 
-    # implicit fuzzy classification implemented here
+    # fuzzy classification of the predicted direction of movement into 9 different cases
     def futureXY(self, img, lmls, lmrs, init, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, err, draw=True):
 
+        # the case covering movements toward the top right of the frame (i.e.; away and to the right of the single camera's perspective)
         if (angleOfApproach > 0) and (angleOfApproach < 90) and (centerXApproachSpeed > 0) and (centerYApproachSpeed < 0):
             futureX = self.xFilter.process(init[0] + np.math.sqrt(
                 ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
             futureY = self.yFilter.process(init[1] - np.math.sqrt(
                 ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
 
+            # visualizing the direction of movement
             if draw == True:
                 cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS,thickness=2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.putText(img, 'CASE 1', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
 
-
+        # the case covering movements toward the bottom left of the frame (i.e.; toward and to the left of the single camera's perspective)
         elif (angleOfApproach > 0) and (angleOfApproach < 90) and (centerXApproachSpeed < 0) and (centerYApproachSpeed > 0):
             futureX = self.xFilter.process(init[0] - np.math.sqrt(
                 ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
             futureY = self.yFilter.process(init[1] + np.math.sqrt(
                 ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
 
+            # visualizing the direction of movement
             if draw == True:
                 cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.putText(img, 'CASE 2', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
 
+        # the case covering movements toward the bottom right of the frame (i.e.; toward and to the right of the single camera's perspective)
         elif (angleOfApproach > 90) and (angleOfApproach < 180) and (centerXApproachSpeed > 0) and (centerYApproachSpeed > 0):
             futureX = self.xFilter.process(init[0] + np.math.sqrt(
                 ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
             futureY = self.yFilter.process(init[1] + np.math.sqrt(
                 ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
 
+            # visualizing the direction of movement
             if draw == True:
                 cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.putText(img, 'CASE 3', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
 
+        # the case covering movements toward the top left of the frame (i.e.; away and to the left of the single camera's perspective)
         elif (angleOfApproach > 90) and (angleOfApproach < 180) and (centerXApproachSpeed < 0) and (centerYApproachSpeed < 0):
             futureX = self.xFilter.process(init[0] - np.math.sqrt(
                 ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
             futureY = self.yFilter.process(init[1] - np.math.sqrt(
                 ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
 
+            # visualizing the direction of movement
             if draw == True:
                 cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.putText(img, 'CASE 4', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
 
+        # the case covering movements toward the right of the frame (i.e.; to the right of the single camera's perspective)
         elif (((angleOfApproach > 0 - err) and (angleOfApproach < 0 + err)) or ((angleOfApproach > 180 - err) and (angleOfApproach < 180 + err))) and (centerXApproachSpeed > 0) and ((centerYApproachSpeed > 0 - err) and (centerYApproachSpeed < 0 + err)):
             futureX = self.xFilter.process(init[0] + np.math.sqrt(
                 ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
             futureY = self.yFilter.process(init[1])
 
+            # visualizing the direction of movement
             if draw == True:
                 cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.putText(img, 'CASE 5', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
 
+        # the case covering movements toward the left of the frame (i.e.; to the left of the single camera's perspective)
         elif (((angleOfApproach > 0 - err) and (angleOfApproach < 0 + err)) or ((angleOfApproach > 180 - err) and (angleOfApproach < 190 - err))) and (centerXApproachSpeed < 0) and ((centerYApproachSpeed > 0 - err) and (centerYApproachSpeed < 0 + err)):
             futureX = self.xFilter.process(init[0] - np.math.sqrt(
                 ((centerXApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
             futureY = self.yFilter.process(init[1])
 
+            # visualizing the direction of movement
             if draw == True:
                 cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.putText(img, 'CASE 6', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
 
+        # the case covering movements toward the top of the frame (i.e.; away from the single camera's perspective)
         elif ((angleOfApproach > 90 - err) and (angleOfApproach < 90 + err)) and ((centerXApproachSpeed > 0 - err) and (centerXApproachSpeed < 0 + err)) and (centerYApproachSpeed > 0):
             futureX = self.xFilter.process(init[0])
             futureY = self.yFilter.process(init[1] - np.math.sqrt(
                 ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
 
+            # visualizing the direction of movement
             if draw == True:
                 cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.putText(img, 'CASE 7', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
 
+        # the case covering movements toward the bottom of the frame (i.e.; towards the single camera's perspective)
         elif ((angleOfApproach > 90 - err) and (angleOfApproach < 90 + err)) and ((centerXApproachSpeed > 0 - err) and (centerXApproachSpeed < 0 + err)) and (centerYApproachSpeed < 0):
             futureX = self.xFilter.process(init[0])
             futureY = self.yFilter.process(init[1] + np.math.sqrt(
                 ((centerYApproachSpeed * timeToFuture) * np.math.cos(angleOfApproach)) ** 2))
 
+            # visualizing the direction of movement
             if draw == True:
                 cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
                 cv2.putText(img, 'CASE 8', (200, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
 
+        # the edge case for a lack of significant movement requiring prediction of a location seperate from the future reality
         else:
             futureX = self.xFilter.process(init[0])
             futureY = self.yFilter.process(init[1])
 
+            # visualizing the direction of movement
             if draw == True:
                 cv2.drawMarker(img, (int(futureX), int(futureY)), color=(0, 255, 0), markerType=cv2.MARKER_CROSS, thickness=2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(futureX), int(futureY)), (255, 255, 255), 2)
@@ -410,84 +366,92 @@ class PoseDetector:
 
 def main(path):
 
-    pathOverlay = cv2.imread('resources/overlays/pathOverlayBlack.png')
-    cap = cv2.VideoCapture(path)
-    cap.set(3, 768)
-    cap.set(4, 432)
+    # initializing the frame and overlay settings
+    pathOverlay = cv2.imread('resources/overlays/pathOverlayBlack.png') # getting the overlay image
+    cap = cv2.VideoCapture(path) # initializing the test video path
+    cap.set(3, 768) # setting the width of the frame
+    cap.set(4, 432) # setting the height of the frame
 
     # FPS initializations
-    curTime = time.time() # start time
-    lastTime = curTime
-    fps = 0
-    frameNumber = 0
+    curTime = time.time() # initializing the starting time
+    lastTime = curTime # initializing the time in the last frame to the current time itself
+    fps = 0 # initializing the frame rate variable
+    frameNumber = 0 # initializing the frame number to zero
 
     # general initializations
-    lastXCenter = 0
-    lastYCenter = 0
-    occupiedHeight = 0
-    centerXApproachSpeed = 0
-    centerYApproachSpeed = 0
-    angleOfApproach = 0
-    lastDeltaY = 0
+    lastXCenter = 0 # location of the center's X coordinate in the last frame
+    lastYCenter = 0 # location of the center's Y coordinate in the last frame
+    occupiedHeight = 0 # a ratio of the height of the target on the frame to the frame width itself as a measure of nearness of the obstacle to the camera
+    centerXApproachSpeed = 0 # the X component of the velocity of the detected obstacle
+    centerYApproachSpeed = 0 # the Y component of the velocity of the detected obstacle
+    angleOfApproach = 0 # the recorded angle of orientation of the obstacle
+    lastDeltaY = 0 # the height difference between the highest and lowest points of the obstacle on the last frame
 
     # future definitions
-    futureX = 0
-    futureY = 0
-    # threshold = 10 # collision threshold for futureDeltaY
+    futureX = 0 # the predicted X coordinate of the location of the obstacle
+    futureY = 0 # the predicted Y coordinate of the location of the obstacle
 
     # past definitions
-    currentFrame = 0
-    frameWindow = 4
+    currentFrame = 0 # the number of the current frame
+    frameWindow = 4 # the window size of frames past the present for initializations as the last state of the system
 
-    # pose detector settings and variables that visibly impact output
+    # pose detector settings and variables that visibly impact output (structured in this manner for ease of testing)
     detector = PoseDetector()
+    # setting the filter options for the pose detector class
     # filter options : StreamingMovingAverage(10), Kalman(windowSize=20, n=10), noFilter()
     detector.filterSettings(xFilter=StreamingMovingAverage(20),
                             yFilter=StreamingMovingAverage(20),
                             angleFilter=Kalman(windowSize=25, n=10))
     timeToFuture = 1 # all collision predictions are made for these many seconds into the future
-    futureErrorThresholds = 10
-    drawState = True
-
-    #pathHistory = []
+    futureErrorThresholds = 10 # the error thresholds for the fuzzy states for both linear and angular measurements as a lower proportional error margin is to be tolerated for angular variations than linear ones
+    drawState = True # the boolean determining whether or not landmarks and their associated line segments are to be drawn on the frame image
 
     while True:
 
+        # reading the image
         success, img = cap.read()
 
+        # resizing the image to fit the frame
         img = cv2.resize(img, (768, 432))
+        # flipping the image to get a real depiction of the scene
         img = cv2.flip(img, 1)
 
+        # finding the landmarks and visualizing them
         img = detector.findPose(img, draw=drawState)
 
-        # resizing & adding path overlay
+        # resizing & adding a standard path overlay
         pathOverlay = cv2.resize(pathOverlay, (768, 432))
         img = cv2.addWeighted(img,0.7,pathOverlay,0.3,0)
 
-        # path overlay (narrow)
+        # adding a path overlay depicting the path to be taken by the robot assumed to contain our camera on it's configuration (an extrapolation of a straight path)
         cv2.line(img, (150, 432), (360, 200), (255, 255, 255), 2)
         cv2.line(img, (618, 432), (400, 200), (255, 255, 255), 2)
         cv2.line(img, (360, 200), (400, 200), (255, 255, 255), 2)
 
+        # getting a list of landmarks and bounding box information
         lmList, bboxInfo = detector.findPosition(img, draw=False, bboxWithHands=False)
 
+        # code to be executed if a human obstacle is detected (i.e.; if ia bounding box is generatable)
         if bboxInfo:
 
             # finding the center of the target pose
             center = bboxInfo["center"]
-            # cv2.circle(img, center, 5, (255, 0, 255), cv2.FILLED)
-
-            # finding the difference between highest landmark and lowest landmark in pixels
             yLocations = []
             for lm in lmList:
                 yLocations.append(lm[2])
+
+                # getting the landmarks corresponding to the shoulders
                 if (lm[0] == 12):
                     lmrs = lm
                 elif (lm[0] == 11):
                     lmls = lm
-            deltaY = max(yLocations) - min(yLocations)
-            occupiedHeight = deltaY / 432 # indicator of pedestrian's apparent height ( in terms of percentage of Y axis occupied)
 
+            # finding the difference between highest landmark and lowest landmark in pixels
+            deltaY = max(yLocations) - min(yLocations)
+
+            occupiedHeight = deltaY / 432 # an indicator of pedestrian's apparent height (in terms of percentage of the Y axis occupied)
+
+            # calculating the velocity vector components of the obstacle with respect to the frame
             centerXApproachSpeed = (center[0] - lastXCenter) / (time.time() - lastTime)
             centerYApproachSpeed = (center[1] - lastYCenter) / (time.time() - lastTime)
 
@@ -497,7 +461,8 @@ def main(path):
             # filtering, predicting & drawing the future location of the target pedestrian
             futureX, futureY = detector.futureXY(img, lmls, lmrs, center, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, futureErrorThresholds, draw=drawState)
 
-            # path generation
+            # generating a representation of the path taken by the obstacle
+            # this visualization was accomplished by constructing extrapolated parallel straight lines along the line connecting the centroid of the shoulder points and the predicted location coordinates on the frame by origin shifting
             oShiftX = futureX - ((lmls[1] + lmrs[1]) / 2)
             oShiftY = futureY - ((lmls[2] + lmrs[2]) / 2)
             x1 = lmls[1] + oShiftX
@@ -505,11 +470,7 @@ def main(path):
             x2 = lmrs[1] + oShiftX
             y2 = lmrs[2] + oShiftY
 
-            # conditions for collision prediction
-            #cv2.putText(img, '{0:.2f}'.format(occupiedHeight), (10, 115), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0),1, cv2.LINE_AA)
-            #cv2.putText(img, '{0:.2f}'.format(angleOfApproach), (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
-
-            # green zone
+            # green zone - indicating a lack of any risk of collision due to a target percieved to be too far away
             if occupiedHeight < 0.5 :
                 cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,128,0), 2)
@@ -519,10 +480,7 @@ def main(path):
                 cv2.line(img, (270, 300), (495, 300), (0,128,0), 2)
                 cv2.line(img, (315, 250), (448, 250), (0,128,0), 2)
 
-                #pathHistory.append([x1, y1, (0, 128, 0)])
-                #pathHistory.append([x2, y2, (0, 128, 0)])
-
-            # yellow zone
+            # yellow zone - indicating a minor risk of collision due to a nearby target which may be on a course that collides with the assumed robot
             elif occupiedHeight > 0.5 :
                 cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,255,255), 2)
@@ -532,30 +490,22 @@ def main(path):
                 cv2.line(img, (270, 300), (495, 300), (0,255,255), 2)
                 cv2.line(img, (315, 250), (448, 250), (0,255,255), 2)
 
-                #pathHistory.append([x1, y1, (0,255,255)])
-                #pathHistory.append([x2, y2, (0,255,255)])
-
-            # red zone
+            # red zone - indicating a guaranteed collision when the predicted future coordinates fall within a projection of the future location of the robot on the given frame
             if pointInQuad(futureX, futureY, 270, 300, 495, 300, 315, 250, 448, 250) :
                 cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,0,255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,0,255), 2)
 
-                # area denoting robot's future location on overlay
+                # area denoting robot's future location on overlay with outcome printing
                 cv2.line(img, (270, 300), (495, 300), (0,0,255), 2)
                 cv2.line(img, (315, 250), (448, 250), (0,0,255), 2)
+                cv2.putText(img, 'COLLISION IMMINENT', (600, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
 
-                #pathHistory.append([x1, y1, (0, 0, 255)])
-                #pathHistory.append([x2, y2, (0, 0, 255)])
-
-            #for i in pathHistory:
-                #cv2.circle(img, (int(i[0]), int(i[1])), 3, i[2], cv2.FILLED)
-            print(pointInQuad(futureX, futureY, 270, 300, 495, 300, 315, 250, 448, 250))
-            # highlighting shoulder points
+            # highlighting the shoulder points being considered for orientation evaluation
             cv2.circle(img, (lmls[1], lmls[2]), 5, (255, 255, 255), cv2.FILLED)
             cv2.circle(img, (lmrs[1], lmrs[2]), 5, (255, 255, 255), cv2.FILLED)
 
-            # displacement updation, will cause first n frames in window to be highly inaccurate
+            # a series of conditional definitions to define the state of the last frame taken ('last' here being a relative term)
             currentFrame += 1
             frameNumber += 1
             if (currentFrame == frameWindow) and (frameNumber > frameWindow):
@@ -574,9 +524,6 @@ def main(path):
             else:
                 pass
 
-        # delay & display data on overlay
-        # time.sleep(0.2)
-
         # FPS calculation
         fps = 1 / (time.time() - curTime)
         curTime = time.time()
@@ -589,23 +536,33 @@ def main(path):
         cv2.line(img, (710, 17), (710, 22), (100, 255, 0), 1)
         cv2.line(img, (760, 17), (760, 22), (100, 255, 0), 1)
 
-        # test case
+        # printing the path of the test video
         cv2.putText(img, str(path), (300, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
 
+        # showing the processed frame
         cv2.imshow("img", img)
 
+        # adding the video break conditions
         if (cv2.waitKey(1) == ord('q')) or (not success):
-            # cv2.imwrite('resources/snapshot.png', img)
             break
 
-    # releasing & destroying windows
+    # releasing & destroying the windows
     cap.release()
     cv2.destroyAllWindows()
 
 
+# a definition of the main parameters
 if __name__ == "__main__":
+
+    # defining the directory to obtain the test videos from
     directory = 'resources\stockTestFootage'
+
+    # listing all the test videos within the directory
     for filename in os.listdir(directory):
+
         f = os.path.join(directory, filename)
+
+        # checking for the validity of a file path
         if os.path.isfile(f):
+
             main(f)

@@ -413,7 +413,7 @@ def main(path):
         # resizing the image to fit the frame
         img = cv2.resize(img, (768, 432))
         # flipping the image to get a real depiction of the scene
-        img = cv2.flip(img, 1
+        img = cv2.flip(img, 1)
 
         # finding the landmarks and visualizing them
         img = detector.findPose(img, draw=drawState)
