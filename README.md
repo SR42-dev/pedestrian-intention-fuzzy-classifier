@@ -41,9 +41,9 @@ To set up this repository on a local system and test out the algorithm ...
     Note to self : This command will have to be updated based on the name of the remote repository.
 
 
-5. Create a new directory under ./resources named 'stockTestFootage' and download the test .mp4 files on the following drive link into it 
+5. Create a new directory under ./resources named 'testFootage' and download the contents of the following drive link into it 
 
-   ```<insert drive link here>```
+   ```https://drive.google.com/drive/folders/1UAq8otOaH1UOHRCpjJjYoF4VzR-jNKkm?usp=sharing```
 
 
 6. Execute the three source codes provided as such 
