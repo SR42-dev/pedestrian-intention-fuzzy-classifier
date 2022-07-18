@@ -1,11 +1,11 @@
 """
 
-singlePedestrianPathIntersectionv1.1.py
+singlePedestrianCollisionPredictionv1.0.py
 
-- This script extrapolates the predicted path in completion assuming no sudden changes in fuzzy state for each frame based on data from the last defined one.
-- This extrapolation is done over a frame containing a pre defined path overlay for the robot that the camera is assumed to be mounted on.
-- While it is mentioned in the code that the prediction is made 100 seconds into the future, this is merely an elegant hack to generate a full path from the location prediction source codes in the other two scripts given in the directory.
-- This script doesn't highlight the likelihood of collision. Refer to singlePedestrianCollisionPredictionv1.0.py for the same.
+- This script predicts the path of movement one second ahead of time by classifying the pedestrian obstacle's future coordinates on the frame into 2D co-ordinates.
+- After classification, the script also checks for whether or not the future coordinates fall into the projection of a zone where the robot on which the camera is assumed to be mounted is projected to be an arbitrary time into the future.
+- The prediction is one second ahead of time as this algorithm is intended to classify pedestrian obstacle movement behaviours short spans of time ahead of the present for quick reaction purposes.
+- This script also clearly states when a collision is imminent when the aforementioned conditions are met.
 
 """
 
@@ -15,7 +15,14 @@ import cv2
 import time
 import numpy as np
 import mediapipe as mp
+import matplotlib.path as mplPath
 
+# function to check if a point is present within a defined quadrilateral
+def pointInQuad(x, y, x1, y1, x2, y2, x3, y3, x4, y4):
+
+    polygon = mplPath.Path(np.array([[x1, y1], [x2, y2], [x3, y3], [x4, y4]])) # drawing and storing the quadrilateral path
+    point = (x, y)
+    return polygon.contains_point(point) # checking for the point's existence within the drawn quadrilateral
 
 # rotation matrix helper functions
 
@@ -159,7 +166,6 @@ class PoseDetector:
     # a method to detect and draw the landmarks detected by the model on the input frame
     def findPose(self, img, draw=True):
 
-
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         self.results = self.pose.process(imgRGB)
         if self.results.pose_landmarks:
@@ -168,6 +174,7 @@ class PoseDetector:
                                            self.mpPose.POSE_CONNECTIONS)
         return img
 
+    # a method to find the positions of the detected landmarks and return the same along with bounding box information
     def findPosition(self, img, draw=True, bboxWithHands=False):
 
         self.lmList = []
@@ -393,32 +400,28 @@ def main(path):
     lastDeltaY = 0 # the height difference between the highest and lowest points of the obstacle on the last frame
 
     # future definitions
-    futureX = 0  # the predicted X coordinate of the location of the obstacle
-    futureY = 0  # the predicted Y coordinate of the location of the obstacle
+    futureX = 0 # the predicted X coordinate of the location of the obstacle
+    futureY = 0 # the predicted Y coordinate of the location of the obstacle
 
     # past frame definitions
-    currentFrame = 0  # the number of the current frame
-    frameWindow = 4  # the window size of frames past the present for initializations as the last state of the system
+    currentFrame = 0 # the number of the current frame
+    frameWindow = 4 # the window size of frames past the present for initializations as the last state of the system
 
-    # pose detector settings and variables that visibly impact output
+    # pose detector settings and variables that visibly impact output (structured in this manner for ease of testing)
     detector = PoseDetector()
     # setting the filter options for the pose detector class
     # filter options : StreamingMovingAverage(10), Kalman(windowSize=20, n=10), noFilter()
-    detector.filterSettings(xFilter=StreamingMovingAverage(5),
-                            yFilter=StreamingMovingAverage(5),
+    detector.filterSettings(xFilter=StreamingMovingAverage(20),
+                            yFilter=StreamingMovingAverage(20),
                             angleFilter=Kalman(windowSize=25, n=10))
-    timeToFuture = 100 # all collision predictions are made for these many seconds into the future
-    futureErrorThresholds = 10# the error thresholds for the fuzzy states for both linear and angular measurements as a lower proportional error margin is to be tolerated for angular variations than linear ones
+    timeToFuture = 1 # all collision predictions are made for these many seconds into the future
+    futureErrorThresholds = 10 # the error thresholds for the fuzzy states for both linear and angular measurements as a lower proportional error margin is to be tolerated for angular variations than linear ones
     drawState = True # the boolean determining whether or not landmarks and their associated line segments are to be drawn on the frame image
 
     while True:
 
         # reading the image
         success, img = cap.read()
-
-        # adding the video break conditions
-        if (cv2.waitKey(1) == ord('q')) or (not success):
-            break
 
         # resizing the image to fit the frame
         img = cv2.resize(img, (768, 432))
@@ -432,6 +435,11 @@ def main(path):
         pathOverlay = cv2.resize(pathOverlay, (768, 432))
         img = cv2.addWeighted(img,0.7,pathOverlay,0.3,0)
 
+        # adding a path overlay depicting the path to be taken by the robot assumed to contain our camera on it's configuration (an extrapolation of a straight path)
+        cv2.line(img, (150, 432), (360, 200), (255, 255, 255), 2)
+        cv2.line(img, (618, 432), (400, 200), (255, 255, 255), 2)
+        cv2.line(img, (360, 200), (400, 200), (255, 255, 255), 2)
+
         # getting a list of landmarks and bounding box information
         lmList, bboxInfo = detector.findPosition(img, draw=False, bboxWithHands=False)
 
@@ -440,7 +448,6 @@ def main(path):
 
             # finding the center of the target pose
             center = bboxInfo["center"]
-
             yLocations = []
             for lm in lmList:
                 yLocations.append(lm[2])
@@ -475,29 +482,38 @@ def main(path):
             x2 = lmrs[1] + oShiftX
             y2 = lmrs[2] + oShiftY
 
-            # printing the conditions for collision prediction
-            cv2.putText(img, '{0:.2f}'.format(occupiedHeight), (10, 115), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0),1, cv2.LINE_AA)
-            cv2.putText(img, '{0:.2f}'.format(angleOfApproach), (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
-
             # green zone - indicating a lack of any risk of collision due to a target percieved to be too far away
             if occupiedHeight < 0.5 :
                 cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,128,0), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,128,0), 2)
 
+                # area denoting robot's future location on overlay
+                cv2.line(img, (270, 300), (495, 300), (0,128,0), 2)
+                cv2.line(img, (315, 250), (448, 250), (0,128,0), 2)
+
             # yellow zone - indicating a minor risk of collision due to a nearby target which may be on a course that collides with the assumed robot
-            elif occupiedHeight > 0.5 and occupiedHeight < 1 :
+            elif occupiedHeight > 0.5 :
                 cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,255,255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,255,255), 2)
 
-        # red zone - indicating a guaranteed collision when the predicted future coordinates fall within a projection of the future location of the robot on the given frame
-            if occupiedHeight > 1 :
+                # area denoting robot's future location on overlay
+                cv2.line(img, (270, 300), (495, 300), (0,255,255), 2)
+                cv2.line(img, (315, 250), (448, 250), (0,255,255), 2)
+
+            # red zone - indicating a guaranteed collision when the predicted future coordinates fall within a projection of the future location of the robot on the given frame
+            if pointInQuad(futureX, futureY, 270, 300, 495, 300, 315, 250, 448, 250) :
                 cv2.line(img, (lmls[1], lmls[2]), (lmrs[1], lmrs[2]), (255, 255, 255), 2)
                 cv2.line(img, (lmls[1], lmls[2]), (int(x1), int(y1)), (0,0,255), 2)
                 cv2.line(img, (lmrs[1], lmrs[2]), (int(x2), int(y2)), (0,0,255), 2)
 
-            # highlighting shoulder points
+                # area denoting robot's future location on overlay with outcome printing
+                cv2.line(img, (270, 300), (495, 300), (0,0,255), 2)
+                cv2.line(img, (315, 250), (448, 250), (0,0,255), 2)
+                cv2.putText(img, 'COLLISION IMMINENT', (600, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA)
+
+            # highlighting the shoulder points being considered for orientation evaluation
             cv2.circle(img, (lmls[1], lmls[2]), 5, (255, 255, 255), cv2.FILLED)
             cv2.circle(img, (lmrs[1], lmrs[2]), 5, (255, 255, 255), cv2.FILLED)
 
@@ -538,7 +554,11 @@ def main(path):
         # showing the processed frame
         cv2.imshow("img", img)
 
-    # releasing & destroying windows
+        # adding the video break conditions
+        if (cv2.waitKey(1) == ord('q')) or (not success):
+            break
+
+    # releasing & destroying the windows
     cap.release()
     cv2.destroyAllWindows()
 

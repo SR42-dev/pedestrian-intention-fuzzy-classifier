@@ -8,7 +8,7 @@ singlePedestrianPathPrediction3.1.py
 - This project intends to eliminate the usage of an additional ML pipeline to predict the same in order to reduce detection and classification latency as the use case targetted for this project is that of avoiding road accidents caused by autonomous robots due to failures in reacting on time to a sudden change in the movement intention of a pedestrian obstacle.
 - As per preliminary literature surveys, modern standards for this detection speed is close to 200ms. This model is capable of performing the same in 50ms.
 - Understandably, the numbers quoted in the previous point may appear to be outliers at first, due to which documentation will be provided defining the exact testing parameters.
-- This script doesn't highlight the likelihood of collision. Refer to main .py for the same.
+- This script doesn't highlight the likelihood of collision. Refer to singlePedestrianCollisionPredictionv1.0.py for the same.
 
 """
 
