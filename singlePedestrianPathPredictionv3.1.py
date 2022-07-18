@@ -486,6 +486,9 @@ def main(path):
             # angle of approach reporting currently accurate only between the range of 30 and 160 degrees
             angleOfApproach = detector.angleOfOrientation(lmls, lmrs)
 
+            # printing angle of approach
+            cv2.putText(img, '{0:.2f}'.format(angleOfApproach), (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+
             # filtering, predicting & drawing the future location of the target pedestrian
             futureX, futureY = detector.futureXY(img, lmls, lmrs, center, angleOfApproach, centerXApproachSpeed, centerYApproachSpeed, timeToFuture, futureErrorThresholds)
 
@@ -570,7 +573,7 @@ def main(path):
     df['occupiedHeights'] = occupiedHeights
     df['predictedX'] = predictedX
     df['predictedY'] = predictedY
-    df.to_csv('testData/data' + str(path)[-5:-4] + '.csv')
+    #df.to_csv('testData/data' + str(path)[-5:-4] + '.csv')
 
     # releasing & destroying windows
     cap.release()
@@ -581,7 +584,7 @@ def main(path):
 if __name__ == "__main__":
 
     # defining the directory to obtain the test videos from
-    directory = 'resources\stockTestFootage'
+    directory = 'resources\\stockTestFootage'
 
     # listing all the test videos within the directory
     for filename in os.listdir(directory):

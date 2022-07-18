@@ -1,9 +1,11 @@
 """
 
-main.py
+singlePedestrianCollisionPredictionv1.0.py
 
-This script is essentially a workspace for the execution of source codes in an organized manner.
-Refer to README.md for further information.
+- This script predicts the path of movement one second ahead of time by classifying the pedestrian obstacle's future coordinates on the frame into 2D co-ordinates.
+- After classification, the script also checks for whether or not the future coordinates fall into the projection of a zone where the robot on which the camera is assumed to be mounted is projected to be an arbitrary time into the future.
+- The prediction is one second ahead of time as this algorithm is intended to classify pedestrian obstacle movement behaviours short spans of time ahead of the present for quick reaction purposes.
+- This script also clearly states when a collision is imminent when the aforementioned conditions are met.
 
 """
 
@@ -409,11 +411,11 @@ def main(path):
     detector = PoseDetector()
     # setting the filter options for the pose detector class
     # filter options : StreamingMovingAverage(10), Kalman(windowSize=20, n=10), noFilter()
-    detector.filterSettings(xFilter=StreamingMovingAverage(20),
-                            yFilter=StreamingMovingAverage(20),
+    detector.filterSettings(xFilter=StreamingMovingAverage(10),
+                            yFilter=StreamingMovingAverage(10),
                             angleFilter=Kalman(windowSize=25, n=10))
     timeToFuture = 1 # all collision predictions are made for these many seconds into the future
-    futureErrorThresholds = 10 # the error thresholds for the fuzzy states for both linear and angular measurements as a lower proportional error margin is to be tolerated for angular variations than linear ones
+    futureErrorThresholds = 20 # the error thresholds for the fuzzy states for both linear and angular measurements as a lower proportional error margin is to be tolerated for angular variations than linear ones
     drawState = True # the boolean determining whether or not landmarks and their associated line segments are to be drawn on the frame image
 
     while True:
@@ -479,6 +481,9 @@ def main(path):
             y1 = lmls[2] + oShiftY
             x2 = lmrs[1] + oShiftX
             y2 = lmrs[2] + oShiftY
+
+            # printing angle of approach
+            cv2.putText(img, '{0:.2f}'.format(angleOfApproach), (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
 
             # green zone - indicating a lack of any risk of collision due to a target percieved to be too far away
             if occupiedHeight < 0.5 :
@@ -565,7 +570,7 @@ def main(path):
 if __name__ == "__main__":
 
     # defining the directory to obtain the test videos from
-    directory = 'resources\stockTestFootage'
+    directory = 'resources\\stockTestFootage'
 
     # listing all the test videos within the directory
     for filename in os.listdir(directory):

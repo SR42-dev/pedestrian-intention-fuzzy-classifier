@@ -404,11 +404,11 @@ def main(path):
     detector = PoseDetector()
     # setting the filter options for the pose detector class
     # filter options : StreamingMovingAverage(10), Kalman(windowSize=20, n=10), noFilter()
-    detector.filterSettings(xFilter=StreamingMovingAverage(5),
-                            yFilter=StreamingMovingAverage(5),
+    detector.filterSettings(xFilter=StreamingMovingAverage(10),
+                            yFilter=StreamingMovingAverage(10),
                             angleFilter=Kalman(windowSize=25, n=10))
     timeToFuture = 100 # all collision predictions are made for these many seconds into the future
-    futureErrorThresholds = 10# the error thresholds for the fuzzy states for both linear and angular measurements as a lower proportional error margin is to be tolerated for angular variations than linear ones
+    futureErrorThresholds = 20 # the error thresholds for the fuzzy states for both linear and angular measurements as a lower proportional error margin is to be tolerated for angular variations than linear ones
     drawState = True # the boolean determining whether or not landmarks and their associated line segments are to be drawn on the frame image
 
     while True:
@@ -431,6 +431,11 @@ def main(path):
         # resizing & adding a standard path overlay
         pathOverlay = cv2.resize(pathOverlay, (768, 432))
         img = cv2.addWeighted(img,0.7,pathOverlay,0.3,0)
+
+        # adding a path overlay depicting the path to be taken by the robot assumed to contain our camera on it's configuration (an extrapolation of a straight path)
+        cv2.line(img, (150, 432), (360, 200), (255, 255, 255), 2)
+        cv2.line(img, (618, 432), (400, 200), (255, 255, 255), 2)
+        cv2.line(img, (360, 200), (400, 200), (255, 255, 255), 2)
 
         # getting a list of landmarks and bounding box information
         lmList, bboxInfo = detector.findPosition(img, draw=False, bboxWithHands=False)
@@ -547,7 +552,7 @@ def main(path):
 if __name__ == "__main__":
 
     # defining the directory to obtain the test videos from
-    directory = 'resources\stockTestFootage'
+    directory = 'resources\\stockTestFootage'
 
     # listing all the test videos within the directory
     for filename in os.listdir(directory):
