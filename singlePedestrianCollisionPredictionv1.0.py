@@ -411,8 +411,8 @@ def main(path):
     detector = PoseDetector()
     # setting the filter options for the pose detector class
     # filter options : StreamingMovingAverage(10), Kalman(windowSize=20, n=10), noFilter()
-    detector.filterSettings(xFilter=StreamingMovingAverage(5),
-                            yFilter=StreamingMovingAverage(5),
+    detector.filterSettings(xFilter=StreamingMovingAverage(10),
+                            yFilter=StreamingMovingAverage(10),
                             angleFilter=Kalman(windowSize=25, n=10))
     timeToFuture = 1 # all collision predictions are made for these many seconds into the future
     futureErrorThresholds = 20 # the error thresholds for the fuzzy states for both linear and angular measurements as a lower proportional error margin is to be tolerated for angular variations than linear ones
@@ -552,10 +552,10 @@ def main(path):
         cv2.line(img, (760, 17), (760, 22), (100, 255, 0), 1)
 
         # printing the path of the test video
-        cv2.putText(img, str(path), (300, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+        cv2.putText(img, str(path), (300, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (100, 255, 0), 1, cv2.LINE_AA)
 
         # showing the processed frame
-        cv2.imshow("img", img)
+        cv2.imshow('Frame', img)
 
         # adding the video break conditions
         if (cv2.waitKey(1) == ord('q')) or (not success):
@@ -570,7 +570,7 @@ def main(path):
 if __name__ == "__main__":
 
     # defining the directory to obtain the test videos from
-    directory = 'resources\\stockTestFootage'
+    directory = 'resources\\testFootage\\demoFootageCollision'
 
     # listing all the test videos within the directory
     for filename in os.listdir(directory):

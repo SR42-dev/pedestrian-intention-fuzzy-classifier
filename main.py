@@ -552,10 +552,10 @@ def main(path):
         cv2.line(img, (760, 17), (760, 22), (100, 255, 0), 1)
 
         # printing the path of the test video
-        cv2.putText(img, str(path), (300, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 0), 1, cv2.LINE_AA)
+        cv2.putText(img, str(path), (300, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (100, 255, 0), 1, cv2.LINE_AA)
 
         # showing the processed frame
-        cv2.imshow("img", img)
+        cv2.imshow('Frame', img)
 
         # adding the video break conditions
         if (cv2.waitKey(1) == ord('q')) or (not success):
@@ -570,7 +570,7 @@ def main(path):
 if __name__ == "__main__":
 
     # defining the directory to obtain the test videos from
-    directory = 'resources\\stockTestFootage'
+    directory = 'resources\\testFootage\\demoFootageCollision'
 
     # listing all the test videos within the directory
     for filename in os.listdir(directory):
