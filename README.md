@@ -17,36 +17,36 @@ The attached source codes in this repository intend to test the proposed algorit
 ### Setup instructions
 To set up this repository on a local system and test out the algorithm ...
 
-1. Assuming the existence of an up-to-date pip installer, python and git on the system (defaults for both Windows 11 and Ubuntu 20.04), execute the following command in the terminal of the preferred environment -
+1. Assuming the existence of an up-to-date pip installer, python and git on the system (defaults for both Windows 11 and Ubuntu 20.04), execute the following command in the terminal of the preferred environment 
 
     ```pip3 install numpy matplotlib pandas opencv-python mediapipe ```
 
 
-2. Navigate to a preferred directory by entering the following command in the chosen shell as such -
+2. Navigate to a preferred directory by entering the following command in the chosen shell as such 
 
     ```cd <absolute path to the directory>```
 
 
-3. Clone the repository by executing the following command -
+3. Clone the repository by executing the following command 
 
     ```git clone https://github.com/SR42-dev/pedestrian-intention-fuzzy-classifier.git```
     
     Note to self : This command will have to be updated based on the location of the remote repository as well as it's publicity status.
 
 
-4. Navigate to the repository by executing the following command on the aforementioned shell -
+4. Navigate to the repository by executing the following command on the aforementioned shell 
 
     ```cd pedestrian-intention-fuzzy-classifier```
 
     Note to self : This command will have to be updated based on the name of the remote repository.
 
 
-5. Create a new directory under ./resources named 'stockTestFootage' and download the test .mp4 files on the following drive link into it -
+5. Create a new directory under ./resources named 'stockTestFootage' and download the test .mp4 files on the following drive link into it 
 
    ```<insert drive link here>```
 
 
-6. Execute the three source codes provided as such -
+6. Execute the three source codes provided as such 
 
    ```python singlePedestrianCollisionPredictionv1.0.py```
 
