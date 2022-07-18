@@ -141,6 +141,13 @@ The fuzzy state classification has been implemented using 9 possible states of m
    ![CASE 9](./resources/generalInformation/READMEGraphics/case9.JPG)
    
 
+### Presentation of the work as completed on 18th of July, 2022
+
+PFA the drive link for a three part demonstration of the algorithm 
+
+```https://drive.google.com/drive/folders/1vRmYqLZgvbJgGqevOJ9HnEhu8oz1Tc25?usp=sharing```
+
+The three parts (named as such) contain an introduction, review of the recorded data and a code demonstration respectively.
 
 ### Future scope 
 
