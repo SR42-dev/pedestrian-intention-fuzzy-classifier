@@ -78,55 +78,55 @@ The fuzzy state classification has been implemented using 9 possible states of m
 1. State 1 (CASE 1) - The case covering movements toward the top right of the frame (i.e.; away and to the right of the single camera's perspective).
    
 
-   ![CASE 1](./resources/generalInformation/READMEGraphics/case1.jpg)
+   ![CASE 1](./resources/generalInformation/READMEGraphics/case1.JPG)
    
 
 2. State 2 (CASE 2) - The case covering movements toward the bottom left of the frame (i.e.; toward and to the left of the single camera's perspective).
 
 
-   ![CASE 2](./resources/generalInformation/READMEGraphics/case2.jpg)
+   ![CASE 2](./resources/generalInformation/READMEGraphics/case2.JPG)
    
 
 3. State 3 (CASE 3) - The case covering movements toward the bottom right of the frame (i.e.; toward and to the right of the single camera's perspective).
 
 
-   ![CASE 3](./resources/generalInformation/READMEGraphics/case3.jpg)
+   ![CASE 3](./resources/generalInformation/READMEGraphics/case3.JPG)
    
 
 4. State 4 (CASE 4) - The case covering movements toward the top left of the frame (i.e.; away and to the left of the single camera's perspective).
 
 
-   ![CASE 4](./resources/generalInformation/READMEGraphics/case4.jpg)
+   ![CASE 4](./resources/generalInformation/READMEGraphics/case4.JPG)
    
 
 5. State 5 (CASE 5) - The case covering movements toward the right of the frame (i.e.; to the right of the single camera's perspective).
 
 
-   ![CASE 5](./resources/generalInformation/READMEGraphics/case5.jpg)
+   ![CASE 5](./resources/generalInformation/READMEGraphics/case5.JPG)
    
 
 6. State 6 (CASE 6) - The case covering movements toward the left of the frame (i.e.; to the left of the single camera's perspective).
 
 
-   ![CASE 6](./resources/generalInformation/READMEGraphics/case6.jpg)
+   ![CASE 6](./resources/generalInformation/READMEGraphics/case6.JPG)
    
 
 7. State 7 (CASE 7) - The case covering movements toward the top of the frame (i.e.; away from the single camera's perspective).
 
 
-   ![CASE 7](./resources/generalInformation/READMEGraphics/case7.jpg)
+   ![CASE 7](./resources/generalInformation/READMEGraphics/case7.JPG)
    
 
 8. State 8 (CASE 8) - The case covering movements toward the bottom of the frame (i.e.; towards the single camera's perspective).
 
 
-   ![CASE 8](./resources/generalInformation/READMEGraphics/case8.jpg)
+   ![CASE 8](./resources/generalInformation/READMEGraphics/case8.JPG)
    
 
 9. State 9 (CASE 9) - The edge case for a lack of significant movement requiring prediction of a location seperate from the future reality.
 
 
-   ![CASE 9](./resources/generalInformation/READMEGraphics/case9.jpg)
+   ![CASE 9](./resources/generalInformation/READMEGraphics/case9.JPG)
    
 
 
