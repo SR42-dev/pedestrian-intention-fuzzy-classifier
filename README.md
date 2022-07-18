@@ -3,7 +3,7 @@ A research project repository containing algorithms to classify pedestrian obstr
 
 #### Title : Fuzzy Pedestrian Intention Classification using Kalman Filtered Quaternion based Pose Estimation
 
-![Introduction](./resources/generalInformation/READMEGraphics/snapshot.png)
+![Introduction](./resources/generalInformation/READMEGraphics/snapshot.JPG)
 
 ### Abstract 
 The purpose of this project is to provide a proof of concept for a novel vision algorithm design methodology that avoids the issue of precise depth perception altogether and instead focuses solely on the processing of projections of a real-world scene.
@@ -49,10 +49,22 @@ To set up this repository on a local system and test out the algorithm ...
 6. Execute the three source codes provided as such -
 
    ```python singlePedestrianCollisionPredictionv1.0.py```
+
+
+   ![collisionPrediction](./resources/generalInformation/READMEGraphics/collisionPredictionDemo.JPG)
+
    
    ```python singlePedestrianPathIntersectionv1.1.py```
    
-   ```python singlePedestrianPathPredictionxv3.1.py```
+
+   ![pathIntersection](./resources/generalInformation/READMEGraphics/pathIntersectionDemo.JPG)
+
+
+   ```python singlePedestrianPathPredictionv3.1.py```
+
+
+   ![pathPrediction](./resources/generalInformation/READMEGraphics/pathPredictionDemo.JPG)
+
 
 ### Algorithm
 
