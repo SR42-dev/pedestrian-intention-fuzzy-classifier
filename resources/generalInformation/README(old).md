@@ -15,6 +15,7 @@ A research project repository containing algorithms to classify pedestrian obstr
     - Keywords : fuzzy state classification, kalman filter, pose detection, quaternions, ML pipeline, 2D cameras (eliminating the requirement of depth perception), latency, computational load, autonomous robots
     - Title : Low Latency Pedestrian Path Prediction & Intention Classification using Kalman Filtered Quaternion based Pose Estimation 
 - Record a singular testing scene and plug path in all three source code variations
+
 Notes to take the project further :
 - Paper writing : focus on performance analysis using more videos from online
 - Hardware implementation (if necessary) & recording of dynamic scenes
