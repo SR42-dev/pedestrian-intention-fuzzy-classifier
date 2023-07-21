@@ -43,7 +43,7 @@ To set up this repository on a local system and test out the algorithm ...
 
 5. Create a new directory under ./resources named 'testFootage' and download the contents of the following drive link into it 
 
-   ```https://drive.google.com/drive/folders/1UAq8otOaH1UOHRCpjJjYoF4VzR-jNKkm?usp=sharing```
+   ```https://drive.google.com/drive/folders/1fZi3KafGU4TTU8W07uluk3kfIMACDRHL?usp=sharing```
 
 
 6. Execute the three source codes provided as such 
@@ -145,7 +145,7 @@ The fuzzy state classification has been implemented using 9 possible states of m
 
 PFA the drive link for a three part demonstration of the algorithm 
 
-```https://drive.google.com/drive/folders/1vRmYqLZgvbJgGqevOJ9HnEhu8oz1Tc25?usp=sharing```
+```https://drive.google.com/drive/folders/1NRsip8ENUUnDiWJieD_8OrU-dBUw6YFw?usp=sharing```
 
 The three parts (named as such) contain an introduction, review of the recorded data and a code demonstration respectively.
 
